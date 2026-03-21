@@ -323,19 +323,70 @@ For the GNOME variant:
 rpm-ostree rebase ostree-unverified-registry:ghcr.io/<your-github-owner>/bazzite-custom-gnome:stable
 ```
 
-For the CentOS Stream 10 GNOME workstation variant, build with the `centos` image input and point `BAZZITE_CENTOS_BASE_IMAGE` at the CentOS Stream 10 bootc/ostree source image you want to compose from:
+For the CentOS Stream 10 GNOME workstation variant, the compose flow has two parts:
+
+1. Build the local CentOS-based image with the `centos` image input.
+2. Publish the resulting OCI image as the rpm-ostree rebase target from the `Build Bazzite` workflow.
+
+#### Building the CentOS Stream 10 image locally
+
+The `centos`, `centos-stream-10`, and `c10s` image inputs all switch the build to a reduced GNOME workstation compose. This path is intentionally narrower than the Fedora images:
+
+- Only `bazzite` and `bazzite-custom` targets are supported.
+- Deck and NVIDIA targets are rejected by `just_scripts/get-defaults.sh`.
+- The gaming stack, NVIDIA-specific layering, Homebrew provisioning, and the standard per-user Bazzite desktop setup are skipped.
+
+Set `BAZZITE_CENTOS_BASE_IMAGE` to the CentOS Stream 10 bootc/ostree source image you want to compose from, then run:
 
 ```bash
 BAZZITE_CENTOS_BASE_IMAGE=quay.io/<your-org>/<your-centos-stream-10-image>:stream10 just build bazzite-custom centos
+```
+
+The build script resolves the rest of the CentOS-specific defaults automatically:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `BAZZITE_CENTOS_BASE_IMAGE` | _required_ | The CentOS Stream 10 bootc/ostree base image passed to `Containerfile` as `BASE_IMAGE`. |
+| `BAZZITE_CENTOS_SOURCE_IMAGE` | `centos-stream-10-main` | The source image flavor used for labels and image metadata. |
+| `BAZZITE_CENTOS_VERSION` | `10` | The CentOS build version used in the output tag. |
+| `BAZZITE_CENTOS_FEDORA_VERSION` | `43` | The Fedora content version used for shared package/version wiring in the compose. |
+
+By default this creates a local image tagged like:
+
+```text
+localhost/bazzite-custom-gnome-c10s-build:10-<your-branch>
+```
+
+If you want the upstream-flavored CentOS desktop image instead of the custom package set, replace `bazzite-custom` with `bazzite`.
+
+#### Creating the rpm-ostree archive
+
+The repository publishes the rpm-ostree rebase target through the `Build Bazzite` workflow rather than from `just build` directly. On non-PR runs, the workflow:
+
+1. Builds the image into `raw-img`.
+2. Runs `ublue-os/legacy-rechunk` to produce the final bootc/rpm-ostree-compatible OCI artifact.
+3. Copies the rechunked image to GHCR under your fork, for example `ghcr.io/<your-github-owner>/bazzite-custom-gnome-c10s:<tag>`.
+4. Signs the pushed digest with your `SIGNING_SECRET`.
+
+To create that archive in your fork:
+
+1. Add a `SIGNING_SECRET` repository secret and enable GitHub Actions for the fork.
+2. Make sure GitHub Packages is enabled for the repository owner that will publish the image.
+3. Push your changes to `testing` or `unstable`, or open `Actions -> Build Bazzite -> Run workflow` to publish on demand.
+4. Wait for the workflow to finish pushing the image tags to GHCR.
+
+After the workflow finishes, rebase a CentOS Stream 10 system to the published archive:
+
+```bash
 rpm-ostree rebase ostree-unverified-registry:ghcr.io/<your-github-owner>/bazzite-custom-gnome-c10s:stable
 ```
 
 This CentOS variant is a reduced desktop image. It does not publish deck, gaming, or NVIDIA-specific feature sets.
 
-You can also verify the published image with your public cosign key:
+You can also verify the published image with your public cosign key. For the CentOS Stream 10 variant, use the `bazzite-custom-gnome-c10s` image name:
 
 ```bash
-cosign verify --key cosign.pub ghcr.io/<your-github-owner>/bazzite-custom:stable
+cosign verify --key cosign.pub ghcr.io/<your-github-owner>/bazzite-custom-gnome-c10s:stable
 ```
 
 ## Join The Community
