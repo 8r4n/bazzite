@@ -18,18 +18,18 @@ This directory provides a minimal Docker Compose deployment for PXE-booting a Ce
 
 ## Usage
 
-1. Copy the example environment file:
+1. Change into the PXE bundle directory and copy the example environment file:
 
    ```bash
-   cp /home/runner/work/bazzite/bazzite/installer/pxe-boot/.env.example /home/runner/work/bazzite/bazzite/installer/pxe-boot/.env
+   cd installer/pxe-boot
+   cp .env.example .env
    ```
 
-2. Populate `/home/runner/work/bazzite/bazzite/installer/pxe-boot/httpd/content/ostree/repo` with the CentOS rpm-ostree repository you want clients to install.
+2. Populate `./httpd/content/ostree/repo` with the CentOS rpm-ostree repository you want clients to install.
 
 3. Start the stack:
 
    ```bash
-   cd /home/runner/work/bazzite/bazzite/installer/pxe-boot
    docker compose up --build -d
    ```
 
