@@ -46,28 +46,12 @@ tag=$(just _tag "${image}")
 sudoif rm -f "${project_root}/just_scripts/output/${tag}-${git_branch}.iso"
 sudoif rm -f "${project_root}/just_scripts/output/${tag}-${git_branch}.iso-CHECKSUM"
 
-# Set Base Image
-if [[ ${image} =~ "gnome" ]]; then
-    base_image="silverblue"
-else
-    base_image="kinoite"
-fi
-
-# Set variant and flatpak dir
-if [[ "${base_image}" =~ "silverblue" ]]; then
-    flatpak_dir_shortname="installer/gnome_flatpaks"
-elif [[ "${base_image}" =~ "kinoite" ]]; then
-    flatpak_dir_shortname="installer/kde_flatpaks"
-else
-    exit 1
-fi
-variant="Kinoite"
 if [[ ${target} =~ "deck" ]]; then
     extra_boot_params="inst.resolution=1280x800"
 fi
 
 # Make sure image actually exists, build if it doesn't
-ID=$(${container_mgr} images --filter reference=localhost/"${tag}:${latest}-${git_branch}" --format "{{.ID}}")
+ID=$(${container_mgr} images --filter reference=localhost/"${tag}:${build_version}-${git_branch}" --format "{{.ID}}")
 if [[ -z ${ID} ]]; then
     just build "${target}" "${orig_image}"
 fi
@@ -105,7 +89,7 @@ if [[ ! -f ${project_root}/${flatpak_dir_shortname}/flatpaks_with_deps ]]; then
         -e FLATPAK_TRIGGERSDIR=/flatpak/triggers \
         --volume "${FLATPAK_REFS_DIR}":/output \
         --volume "${TEMP_FLATPAK_INSTALL_DIR}":/temp_flatpak_install_dir \
-        "ghcr.io/ublue-os/${base_image}-main:${version}" /temp_flatpak_install_dir/script.sh
+        "ghcr.io/ublue-os/${flatpak_bootstrap_image}-main:${flatpak_bootstrap_version}" /temp_flatpak_install_dir/script.sh
 fi
 
 # Remove Temp Directory
@@ -138,8 +122,8 @@ ${container_mgr} run --rm --privileged  \
     FLATPAK_REMOTE_REFS_DIR="${flatpak_dir_shortname}" \
     IMAGE_NAME="${tag}" \
     IMAGE_REPO="localhost" \
-    IMAGE_TAG="${latest}-${git_branch}" \
+    IMAGE_TAG="${build_version}-${git_branch}" \
     ISO_NAME="build/${tag}-${git_branch}.iso" \
     SECURE_BOOT_KEY_URL='https://github.com/ublue-os/bazzite/raw/main/secure_boot.der' \
-    VARIANT="${variant}" \
-    VERSION="${latest}"
+    VARIANT="${base_variant_name}" \
+    VERSION="${build_version}"

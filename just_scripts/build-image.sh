@@ -26,12 +26,6 @@ if [[ ${target} == "bazzite-custom" ]]; then
     container_target="bazzite"
 fi
 
-if [[ ${image} =~ "gnome" ]]; then
-    base_image="silverblue"
-else
-    base_image="kinoite"
-fi
-
 if [[ ${target} =~ "nvidia" ]]; then
     flavor="nvidia"
 else
@@ -43,16 +37,23 @@ build_args=(
     --build-arg="IMAGE_NAME=${tag}"
     --build-arg="IMAGE_VENDOR=ublue-os"
     --build-arg="IMAGE_BRANCH=${git_branch}"
-    --build-arg="BASE_IMAGE_NAME=${base_image}"
+    --build-arg="BASE_IMAGE_NAME=${base_image_name}"
+    --build-arg="BASE_IMAGE_FAMILY=${base_image_family}"
+    --build-arg="BASE_VARIANT_NAME=${base_variant_name}"
+    --build-arg="BASE_VERSION=${build_version}"
     --build-arg="SHA_HEAD_SHORT=$(git -C "${project_root}" rev-parse --short HEAD)"
-    --build-arg="VERSION_TAG=${latest}"
-    --build-arg="VERSION_PRETTY=${latest}"
+    --build-arg="VERSION_TAG=${build_version}"
+    --build-arg="VERSION_PRETTY=${build_version}"
     --build-arg="KERNEL_FLAVOR=bazzite"
-    --build-arg="SOURCE_IMAGE=${base_image}-${flavor}"
-    --build-arg="FEDORA_VERSION=${latest}"
+    --build-arg="SOURCE_IMAGE=${source_image%-main}-${flavor}"
+    --build-arg="FEDORA_VERSION=${content_version}"
     --target="${container_target}"
-    --tag localhost/"${tag}:${latest}-${git_branch}"
+    --tag localhost/"${tag}:${build_version}-${git_branch}"
 )
+
+if [[ -n ${BAZZITE_CENTOS_BASE_IMAGE:-} && ${base_image_name} == "centos-stream-10" ]]; then
+    build_args+=(--build-arg="BASE_IMAGE=${BAZZITE_CENTOS_BASE_IMAGE}")
+fi
 
 if [[ ${container_mgr} == "docker" ]]; then
     docker_builder="${BAZZITE_DOCKER_BUILDER:-bazzite-builder}"
