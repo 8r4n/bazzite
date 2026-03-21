@@ -2,6 +2,7 @@
 
 IMAGE_INFO="/usr/share/ublue-os/image-info.json"
 BASE_IMAGE_NAME=$(jq -r '."base-image-name"' < $IMAGE_INFO)
+BASE_IMAGE_FAMILY=$(jq -r '."base-image-family" // ."base-image-name"' < $IMAGE_INFO)
 
 USER=$(id -nu 1000)
 HOME=$(getent passwd $USER | cut -d: -f6)
@@ -19,9 +20,9 @@ fi
 # Configure autologin if Steam has been updated
 if [[ ! -f ${DESKTOP_AUTOLOGIN} ]]; then
   sed -i 's/.*Session=.*/Session=gamescope-session.desktop/g' ${SDDM_CONF}
-elif [[ ${BASE_IMAGE_NAME} =~ "kinoite" ]]; then
+elif [[ ${BASE_IMAGE_FAMILY} =~ "kinoite" ]]; then
   sed -i 's/.*Session=.*/Session=plasma.desktop/g' ${SDDM_CONF}
-elif [[ ${BASE_IMAGE_NAME} =~ "silverblue" ]]; then
+elif [[ ${BASE_IMAGE_FAMILY} =~ "silverblue" ]]; then
   sed -i 's/.*Session=.*/Session=gnome-wayland.desktop/g' ${SDDM_CONF}
 fi
 sed -i 's/.*User=.*/User='${USER}'/g' ${SDDM_CONF}

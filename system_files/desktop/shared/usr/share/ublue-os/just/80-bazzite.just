@@ -11,7 +11,8 @@ _install-system-flatpaks:
     #!/usr/bin/bash
     IMAGE_INFO="/usr/share/ublue-os/image-info.json"
     BASE_IMAGE_NAME=$(jq -r '."base-image-name"' < $IMAGE_INFO)
-    if [[ ${BASE_IMAGE_NAME} == 'silverblue' ]]; then
+  BASE_IMAGE_FAMILY=$(jq -r '."base-image-family" // ."base-image-name"' < $IMAGE_INFO)
+  if [[ ${BASE_IMAGE_FAMILY} == 'silverblue' ]]; then
         FLATPAKS="gnome_flatpaks/flatpaks"
     else
         FLATPAKS="kde_flatpaks/flatpaks"

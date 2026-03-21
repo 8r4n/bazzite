@@ -12,9 +12,9 @@ else
     curl -Lo /etc/yum.repos.d/_copr_ublue-os-staging.repo https://copr.fedorainfracloud.org/coprs/ublue-os/staging/repo/fedora-"${FRELEASE}"/ublue-os-staging-fedora-"${FRELEASE}".repo
 fi
 
-if [[ "${BASE_IMAGE_NAME}" == "kinoite" ]]; then
+if [[ "${BASE_IMAGE_FAMILY:-${BASE_IMAGE_NAME}}" == "kinoite" ]]; then
     VARIANT_PKGS="supergfxctl"
-elif [[ "${BASE_IMAGE_NAME}" == "silverblue" ]]; then
+elif [[ "${BASE_IMAGE_FAMILY:-${BASE_IMAGE_NAME}}" == "silverblue" ]]; then
     VARIANT_PKGS="supergfxctl"
 else
     VARIANT_PKGS=""

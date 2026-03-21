@@ -2,10 +2,20 @@
 
 set -eoux pipefail
 
-dnf5 clean all
+if command -v dnf5 >/dev/null 2>&1; then
+	dnf5 clean all
+elif command -v microdnf >/dev/null 2>&1; then
+	microdnf clean all
+fi
 rm -rf /tmp/* || true
-find /var/* -maxdepth 0 -type d \! -name cache -exec rm -fr {} \;
-find /var/cache/* -maxdepth 0 -type d \! -name libdnf5 \! -name rpm-ostree -exec rm -fr {} \;
+for path in /var/lib /var/roothome /var/run /var/tmp; do
+	if [[ -e "${path}" ]]; then
+		rm -rf "${path}"
+	fi
+done
+if [[ -d /var/cache ]]; then
+	find /var/cache -mindepth 1 -maxdepth 1 -type d \! -name libdnf5 \! -name rpm-ostree -exec rm -fr {} \;
+fi
 mkdir -p /var/tmp
 chmod -R 1777 /var/tmp
 

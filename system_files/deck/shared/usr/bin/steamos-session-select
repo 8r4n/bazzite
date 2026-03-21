@@ -6,6 +6,7 @@ die() { echo >&2 "!! $*"; exit 1; }
 
 IMAGE_INFO="/usr/share/ublue-os/image-info.json"
 BASE_IMAGE_NAME=$(jq -r '."base-image-name"' < $IMAGE_INFO)
+BASE_IMAGE_FAMILY=$(jq -r '."base-image-family" // ."base-image-name"' < $IMAGE_INFO)
 
 # File this script will modify, in addition to (potentially) the per-user sentinel file
 CONF_FILE="/etc/sddm.conf.d/zz-steamos-autologin.conf"
@@ -51,23 +52,23 @@ fi
 # We use "plasma" as "desktop" to hook up to SteamOS's scripts
 case "$session" in
   plasma-wayland-persistent)
-    if [[ ${BASE_IMAGE_NAME} == 'kinoite' ]]; then
+    if [[ ${BASE_IMAGE_FAMILY} == 'kinoite' ]]; then
       session_launcher="plasma.desktop"
-    elif [[ ${BASE_IMAGE_NAME} == 'silverblue' ]]; then
+    elif [[ ${BASE_IMAGE_FAMILY} == 'silverblue' ]]; then
       session_launcher="gnome-wayland.desktop"
     fi
   ;;
   plasma-x11-persistent)
-    if [[ ${BASE_IMAGE_NAME} == 'kinoite' ]]; then
+    if [[ ${BASE_IMAGE_FAMILY} == 'kinoite' ]]; then
       session_launcher="plasmax11.desktop"
-    elif [[ ${BASE_IMAGE_NAME} == 'silverblue' ]]; then
+    elif [[ ${BASE_IMAGE_FAMILY} == 'silverblue' ]]; then
       session_launcher="gnome-xorg.desktop"
     fi
   ;;
   desktop|plasma)
-    if [[ ${BASE_IMAGE_NAME} == 'kinoite' ]]; then
+    if [[ ${BASE_IMAGE_FAMILY} == 'kinoite' ]]; then
       session_launcher="plasma-steamos-wayland-oneshot.desktop"
-    elif [[ ${BASE_IMAGE_NAME} == 'silverblue' ]]; then
+    elif [[ ${BASE_IMAGE_FAMILY} == 'silverblue' ]]; then
       session_launcher="gnome-wayland-oneshot.desktop"
     fi
     create_sentinel=1

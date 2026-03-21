@@ -160,7 +160,8 @@ restore-virtual-keyboard:
     #!/usr/bin/bash
     IMAGE_INFO="/usr/share/ublue-os/image-info.json"
     BASE_IMAGE_NAME=$(jq -r '."base-image-name"' < $IMAGE_INFO)
-    if [[ ${BASE_IMAGE_NAME} == 'silverblue' ]]; then
+    BASE_IMAGE_FAMILY=$(jq -r '."base-image-family" // ."base-image-name"' < $IMAGE_INFO)
+    if [[ ${BASE_IMAGE_FAMILY} == 'silverblue' ]]; then
       gnome-extensions disable block-caribou-36@lxylxy123456.ercli.dev
     else
       if [[ ! -f ~/.local/share/applications/com.github.maliit.keyboard.desktop ]]; then

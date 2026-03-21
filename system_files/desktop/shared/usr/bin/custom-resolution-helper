@@ -411,7 +411,8 @@ fi
 #Check and notify for kscreen-doctor
 IMAGE_INFO="/usr/share/ublue-os/image-info.json"
 BASE_IMAGE_NAME=$(jq -r '."base-image-name"' < $IMAGE_INFO)
-if [[ "$BASE_IMAGE_NAME" == "kinoite" ]]; then
+BASE_IMAGE_FAMILY=$(jq -r '."base-image-family" // ."base-image-name"' < $IMAGE_INFO)
+if [[ "$BASE_IMAGE_FAMILY" == "kinoite" ]]; then
    echo "
 ${green}KDE Plasma 6.6${normal} adds the ability to add ${bold}custom resolutions${normal} in ${green}kscreen-doctor${normal}!
 Use that instead if you do not need a custom resolution for Game Mode or Sunshine.

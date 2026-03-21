@@ -157,6 +157,15 @@ Builds with the GNOME desktop environment are available in both desktop and deck
 - Numerous optional extensions pre-installed, including [important user experience fixes](https://www.youtube.com/watch?v=nbCg9_YgKgM).
 - Automatic updates for the [Firefox GNOME theme](https://github.com/rafaelmardojai/firefox-gnome-theme) and [Thunderbird GNOME theme](https://github.com/rafaelmardojai/thunderbird-gnome-theme). <sup><sub>(If installed)</sub></sup>
 
+For local development builds, this repo also supports a `centos` or `c10s` image input for a reduced GNOME workstation image on CentOS Stream 10.
+
+This CentOS path is intentionally narrower than the Fedora GNOME image:
+
+- Desktop targets only. Deck and NVIDIA targets are rejected.
+- No gaming stack. Steam, Lutris, Gamescope, MangoHud, vkBasalt, and related gaming-focused integrations are not included.
+- No NVIDIA-specific features or driver layering.
+- Reduced post-install customization. The CentOS variant skips Homebrew provisioning and the standard Bazzite per-user desktop setup service.
+
 > [!IMPORTANT]
 > **ISOs can be downloaded from our [website](https://download.bazzite.gg), and a helpful install guide can be found [here](https://docs.bazzite.gg/General/Installation_Guide/).**
 
@@ -297,6 +306,7 @@ The custom variant images are pushed to GHCR under your fork owner:
 ```text
 ghcr.io/<your-github-owner>/bazzite-custom:<tag>
 ghcr.io/<your-github-owner>/bazzite-custom-gnome:<tag>
+ghcr.io/<your-github-owner>/bazzite-custom-gnome-c10s:<tag>
 ```
 
 These custom variants add `tmux`, `zstd`, and `gnupg2` on top of the standard `bazzite` image.
@@ -312,6 +322,15 @@ For the GNOME variant:
 ```bash
 rpm-ostree rebase ostree-unverified-registry:ghcr.io/<your-github-owner>/bazzite-custom-gnome:stable
 ```
+
+For the CentOS Stream 10 GNOME workstation variant, build with the `centos` image input and point `BAZZITE_CENTOS_BASE_IMAGE` at the CentOS Stream 10 bootc/ostree source image you want to compose from:
+
+```bash
+BAZZITE_CENTOS_BASE_IMAGE=quay.io/<your-org>/<your-centos-stream-10-image>:stream10 just build bazzite-custom centos
+rpm-ostree rebase ostree-unverified-registry:ghcr.io/<your-github-owner>/bazzite-custom-gnome-c10s:stable
+```
+
+This CentOS variant is a reduced desktop image. It does not publish deck, gaming, or NVIDIA-specific feature sets.
 
 You can also verify the published image with your public cosign key:
 
