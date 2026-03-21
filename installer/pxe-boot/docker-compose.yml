@@ -1,0 +1,39 @@
+services:
+  pxe:
+    build:
+      context: ./dnsmasq
+      dockerfile: Containerfile
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    container_name: bazzite-pxe-dnsmasq
+    depends_on:
+      - ostree-web
+    environment:
+      DHCP_RANGE: ${DHCP_RANGE:-192.168.100.100,192.168.100.199,255.255.255.0,12h}
+      DHCP_ROUTER: ${DHCP_ROUTER:-192.168.100.1}
+      HTTP_PORT: ${HTTP_PORT:-8080}
+      PXE_SERVER_IP: ${PXE_SERVER_IP:-192.168.100.2}
+      CENTOS_INSTALL_ROOT: ${CENTOS_INSTALL_ROOT:-http://mirror.stream.centos.org/10-stream/BaseOS/x86_64/os}
+      KICKSTART_PATH: ${KICKSTART_PATH:-/kickstarts/centos-ostree.ks}
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - ./tftp:/srv/tftp:Z
+
+  ostree-web:
+    build:
+      context: ./httpd
+      dockerfile: Containerfile
+    container_name: bazzite-ostree-web
+    environment:
+      HTTP_PORT: ${HTTP_PORT:-8080}
+      OSTREE_OSNAME: ${OSTREE_OSNAME:-centos}
+      OSTREE_REF: ${OSTREE_REF:-centos-stream/10/x86_64/edge}
+      OSTREE_REMOTE: ${OSTREE_REMOTE:-centos}
+      OSTREE_REPO_URL: ${OSTREE_REPO_URL:-http://192.168.100.2:8080/ostree/repo}
+    ports:
+      - "${HTTP_PORT:-8080}:8080"
+    restart: unless-stopped
+    volumes:
+      - ./httpd/content:/srv/www:Z
