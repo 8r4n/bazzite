@@ -330,6 +330,8 @@ BAZZITE_CENTOS_BASE_IMAGE=quay.io/<your-org>/<your-centos-stream-10-image>:strea
 rpm-ostree rebase ostree-unverified-registry:ghcr.io/<your-github-owner>/bazzite-custom-gnome-c10s:stable
 ```
 
+An example kickstart for deploying that CentOS Stream 10 rpm-ostree image is available at `installer/kickstarts/centos-stream-10.ks`.
+
 This CentOS variant is a reduced desktop image. It does not publish deck, gaming, or NVIDIA-specific feature sets.
 
 You can also verify the published image with your public cosign key:
