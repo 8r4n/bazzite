@@ -375,13 +375,49 @@ To create that archive in your fork:
 3. Push your changes to `testing` or `unstable`, or open `Actions -> Build Bazzite -> Run workflow` to publish on demand.
 4. Wait for the workflow to finish pushing the image tags to GHCR.
 
+For local iteration, this repository also includes a helper that mirrors the workflow's rechunk step against the already-built local CentOS image:
+
+```bash
+just rechunk-local bazzite-custom centos
+```
+
+By default this expects the matching local source image created by `just build`, for example `localhost/bazzite-custom-gnome-c10s-build:10-<your-branch>`, and writes the rechunked OCI archive under `just_scripts/output/rechunk/`. The helper uses rootless Podman with `podman unshare` for the source mount, `skopeo`, and the same `ghcr.io/ublue-os/legacy-rechunk:v1.0.0-x86_64` image referenced by the workflow.
+
+Useful overrides for local rechunking:
+
+| Variable | Purpose |
+| --- | --- |
+| `BAZZITE_RECHUNK_REF` | Override the local source image reference instead of the default `localhost/...` tag. |
+| `BAZZITE_RECHUNK_PREV_REF` | Provide a previous image reference to reuse the earlier plan and reduce layer churn. |
+| `BAZZITE_RECHUNK_VERSION` | Set the output version written into the rechunked OCI metadata. |
+| `BAZZITE_RECHUNK_OUTPUT_DIR` | Change where the OCI directory is written. |
+| `BAZZITE_RECHUNK_OVERWRITE=1` | Replace an existing output directory for the same source ref. |
+
+You can validate the local OCI output without pushing it anywhere by importing it into local container storage and running the same image-level checks used during development:
+
+```bash
+skopeo copy \
+  oci:just_scripts/output/rechunk/bazzite-custom-gnome-c10s-build_10-<your-branch> \
+  containers-storage:localhost/bazzite-custom-gnome-c10s-rechunk:10-<your-branch>
+
+skopeo inspect \
+  containers-storage:localhost/bazzite-custom-gnome-c10s-rechunk:10-<your-branch>
+
+podman run --rm --pull=never \
+  --entrypoint bootc \
+  localhost/bazzite-custom-gnome-c10s-rechunk:10-<your-branch> \
+  container lint
+```
+
+`bootc status` can also be run inside the imported image, but in a regular container it will report `booted`, `staged`, and `rollback` as `null` because the image is not running on a booted ostree host.
+
 After the workflow finishes, rebase a CentOS Stream 10 system to the published archive:
 
 ```bash
 rpm-ostree rebase ostree-unverified-registry:ghcr.io/<your-github-owner>/bazzite-custom-gnome-c10s:stable
 ```
 
-An example kickstart for deploying that CentOS Stream 10 rpm-ostree image is available at `installer/kickstarts/centos-stream-10.ks`. Replace the `<your-github-owner>` placeholder in that file before using it.
+Example kickstarts for deploying that CentOS Stream 10 image are available at `installer/kickstarts/centos-stream-10.ks` for the ostree-container path and `installer/kickstarts/centos-stream-10-ostree.ks` for the plain OSTree repository path. Replace the `<your-github-owner>` placeholder in the container example before using it.
 
 This CentOS variant is a reduced desktop image. It does not publish deck, gaming, or NVIDIA-specific feature sets.
 

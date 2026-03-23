@@ -1,7 +1,7 @@
-# Kickstart for deploying the CentOS Stream 10 rpm-ostree image built by this repository.
+# Kickstart for deploying the CentOS Stream 10 ostree-container image built by this repository.
 #
 # Replace <your-github-owner> below with the GitHub username or organization that publishes your
-# image before using this kickstart. Adjust the registry or tag as needed for your deployment.
+# image before using this kickstart. Adjust the registry, transport, or tag as needed for your deployment.
 
 text
 lang en_US.UTF-8

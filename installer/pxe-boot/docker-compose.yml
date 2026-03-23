@@ -27,7 +27,11 @@ services:
       dockerfile: Containerfile
     container_name: bazzite-ostree-web
     environment:
+      DEPLOYMENT_TYPE: ${DEPLOYMENT_TYPE:-ostree}
       HTTP_PORT: ${HTTP_PORT:-8080}
+      OSTREE_CONTAINER_NO_SIGNATURE_VERIFICATION: ${OSTREE_CONTAINER_NO_SIGNATURE_VERIFICATION:-false}
+      OSTREE_CONTAINER_TRANSPORT: ${OSTREE_CONTAINER_TRANSPORT:-registry}
+      OSTREE_CONTAINER_URL: ${OSTREE_CONTAINER_URL:-ghcr.io/example/bazzite-custom-gnome-c10s:stable}
       OSTREE_OSNAME: ${OSTREE_OSNAME:-centos}
       OSTREE_REF: ${OSTREE_REF:-centos-stream/10/x86_64/edge}
       OSTREE_REMOTE: ${OSTREE_REMOTE:-centos}
