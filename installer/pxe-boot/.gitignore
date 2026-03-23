@@ -1,0 +1,2 @@
+/tftp/pxelinux.cfg/default
+/httpd/content/kickstarts/centos-ostree.ks
