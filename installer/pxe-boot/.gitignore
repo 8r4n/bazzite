@@ -7,3 +7,4 @@
 /tftp/pxelinux.cfg/default
 /httpd/content/kickstarts/centos-ostree.ks
 /httpd/content/kickstarts/centos-container.ks
+/registry/data/

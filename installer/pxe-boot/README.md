@@ -2,12 +2,15 @@
 
 This directory provides a minimal Docker Compose deployment for PXE-booting a CentOS Stream base installer and handing the install off to either a plain OSTree or an ostree-container kickstart.
 
+For isolated-network deployment, see `AIRGAP.md` in this directory.
+
 ## Services
 
 - `pxe`: a `dnsmasq`-based PXE/TFTP service built from `quay.io/centos/centos:stream10`
 - `ostree-web`: a simple web server, also built from `quay.io/centos/centos:stream10`, that hosts:
   - the generated `kickstarts/centos-ostree.ks`
    - your mirrored or published `ostree/repo` content when using `DEPLOYMENT_TYPE=ostree`
+- `registry`: an optional local container registry used for airgapped `DEPLOYMENT_TYPE=container` installs
 
 ## Expected flow
 

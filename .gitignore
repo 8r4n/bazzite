@@ -1,1 +1,4 @@
 just_scripts/output/rechunk/
+just_scripts/output/airgap/
+installer/pxe-boot/httpd/content/ostree/repo/
+installer/pxe-boot/registry/data/

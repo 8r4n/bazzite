@@ -67,6 +67,14 @@ pxe-up:
 pxe-down:
     @{{ project_root }}/just_scripts/pxe-down.sh
 
+# Gather all artifacts needed to run the PXE workflow on an airgapped network.
+gather-airgap:
+    @{{ project_root }}/just_scripts/gather-airgap-resources.sh
+
+# Stage a previously gathered airgap bundle onto the local PXE host.
+stage-airgap:
+    @{{ project_root }}/just_scripts/stage-airgap-resources.sh
+
 # List Images
 list-images:
     @{{ project_root }}/just_scripts/list-images.sh

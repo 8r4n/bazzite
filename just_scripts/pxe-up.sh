@@ -17,14 +17,25 @@ if [[ ! -f ${env_file} ]]; then
     env_file="${pxe_root}/.env.example"
 fi
 
+set -a
+# shellcheck disable=SC1090
+. "${env_file}"
+set +a
+
 cd "${pxe_root}"
 
 if [[ ${container_mgr} == "docker" ]] && docker compose version >/dev/null 2>&1; then
+    if [[ ${PXE_SKIP_BUILD,,} == "true" || ${PXE_SKIP_BUILD} == "1" ]]; then
+        exec docker compose up -d
+    fi
+
     exec docker compose up --build -d
 fi
 
 if [[ ${container_mgr} == "podman" ]] && podman compose version >/dev/null 2>&1; then
-    exec podman compose up --build -d
+    if [[ ${PXE_SKIP_BUILD,,} != "true" && ${PXE_SKIP_BUILD} != "1" ]]; then
+        exec podman compose up --build -d
+    fi
 fi
 
 if ! command -v podman >/dev/null 2>&1; then
@@ -32,13 +43,13 @@ if ! command -v podman >/dev/null 2>&1; then
     exit 1
 fi
 
-set -a
-# shellcheck disable=SC1090
-. "${env_file}"
-set +a
-
 : "${PXE_SERVER_IP:=}"
 : "${HTTP_PORT:=8080}"
+: "${REGISTRY_PORT:=5000}"
+: "${PXE_DNSMASQ_IMAGE:=localhost/bazzite-pxe-dnsmasq:latest}"
+: "${PXE_OSTREE_WEB_IMAGE:=localhost/bazzite-ostree-web:latest}"
+: "${PXE_REGISTRY_IMAGE:=docker.io/library/registry:2}"
+: "${PXE_SKIP_BUILD:=false}"
 
 if [[ -n ${PXE_SERVER_IP} ]] && ! ip -4 addr show | grep -F "inet ${PXE_SERVER_IP}/" >/dev/null 2>&1; then
     echo "PXE_SERVER_IP ${PXE_SERVER_IP} is not configured on this host." >&2
@@ -46,10 +57,16 @@ if [[ -n ${PXE_SERVER_IP} ]] && ! ip -4 addr show | grep -F "inet ${PXE_SERVER_I
     exit 1
 fi
 
-sudo podman build -t localhost/bazzite-ostree-web:latest ./httpd
-sudo podman build -t localhost/bazzite-pxe-dnsmasq:latest ./dnsmasq
-sudo podman rm -f bazzite-ostree-web bazzite-pxe-dnsmasq >/dev/null 2>&1 || true
-sudo podman run -d --name bazzite-ostree-web --restart unless-stopped --env-file "${env_file}" -p "${HTTP_PORT}:8080" -v "${pxe_root}/httpd/content:/srv/www:Z" localhost/bazzite-ostree-web:latest
-sudo podman run -d --name bazzite-pxe-dnsmasq --restart unless-stopped --env-file "${env_file}" --network host --cap-add NET_ADMIN --cap-add NET_RAW -v "${pxe_root}/tftp:/srv/tftp:Z" localhost/bazzite-pxe-dnsmasq:latest
+mkdir -p "${pxe_root}/registry/data"
 
-sudo podman ps --filter name=bazzite-ostree-web --filter name=bazzite-pxe-dnsmasq --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+if [[ ${PXE_SKIP_BUILD,,} != "true" && ${PXE_SKIP_BUILD} != "1" ]]; then
+    sudo podman build -t "${PXE_OSTREE_WEB_IMAGE}" ./httpd
+    sudo podman build -t "${PXE_DNSMASQ_IMAGE}" ./dnsmasq
+fi
+
+sudo podman rm -f bazzite-airgap-registry bazzite-ostree-web bazzite-pxe-dnsmasq >/dev/null 2>&1 || true
+sudo podman run -d --name bazzite-airgap-registry --restart unless-stopped -p "${REGISTRY_PORT}:5000" -v "${pxe_root}/registry/data:/var/lib/registry:Z" "${PXE_REGISTRY_IMAGE}"
+sudo podman run -d --name bazzite-ostree-web --restart unless-stopped --env-file "${env_file}" -p "${HTTP_PORT}:8080" -v "${pxe_root}/httpd/content:/srv/www:Z" "${PXE_OSTREE_WEB_IMAGE}"
+sudo podman run -d --name bazzite-pxe-dnsmasq --restart unless-stopped --env-file "${env_file}" --network host --cap-add NET_ADMIN --cap-add NET_RAW -v "${pxe_root}/tftp:/srv/tftp:Z" "${PXE_DNSMASQ_IMAGE}"
+
+sudo podman ps --filter name=bazzite-airgap-registry --filter name=bazzite-ostree-web --filter name=bazzite-pxe-dnsmasq --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
