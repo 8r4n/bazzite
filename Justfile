@@ -59,6 +59,14 @@ run-iso target="" image="":
 run-container target="" image="":
     @{{ project_root }}/just_scripts/run-image.sh {{ target }} {{ image }}
 
+# Start PXE boot stack
+pxe-up:
+    @{{ project_root }}/just_scripts/pxe-up.sh
+
+# Stop PXE boot stack
+pxe-down:
+    @{{ project_root }}/just_scripts/pxe-down.sh
+
 # List Images
 list-images:
     @{{ project_root }}/just_scripts/list-images.sh

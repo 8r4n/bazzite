@@ -1,2 +1,9 @@
+/.env
+/tftp/ldlinux.c32
+/tftp/libcom32.c32
+/tftp/libutil.c32
+/tftp/lpxelinux.0
+/tftp/menu.c32
 /tftp/pxelinux.cfg/default
 /httpd/content/kickstarts/centos-ostree.ks
+/httpd/content/kickstarts/centos-container.ks

@@ -1,0 +1,55 @@
+#!/usr/bin/bash
+
+if [[ -z ${project_root:-} ]]; then
+    project_root=$(git rev-parse --show-toplevel)
+fi
+
+set -euo pipefail
+
+pxe_root="${project_root}/installer/pxe-boot"
+container_mgr=$("${project_root}/just_scripts/container_mgr.sh")
+
+# shellcheck disable=SC1091
+. "${project_root}/just_scripts/container_env.sh"
+
+env_file="${pxe_root}/.env"
+if [[ ! -f ${env_file} ]]; then
+    env_file="${pxe_root}/.env.example"
+fi
+
+cd "${pxe_root}"
+
+if [[ ${container_mgr} == "docker" ]] && docker compose version >/dev/null 2>&1; then
+    exec docker compose up --build -d
+fi
+
+if [[ ${container_mgr} == "podman" ]] && podman compose version >/dev/null 2>&1; then
+    exec podman compose up --build -d
+fi
+
+if ! command -v podman >/dev/null 2>&1; then
+    echo "No supported compose provider found and podman is unavailable for fallback." >&2
+    exit 1
+fi
+
+set -a
+# shellcheck disable=SC1090
+. "${env_file}"
+set +a
+
+: "${PXE_SERVER_IP:=}"
+: "${HTTP_PORT:=8080}"
+
+if [[ -n ${PXE_SERVER_IP} ]] && ! ip -4 addr show | grep -F "inet ${PXE_SERVER_IP}/" >/dev/null 2>&1; then
+    echo "PXE_SERVER_IP ${PXE_SERVER_IP} is not configured on this host." >&2
+    echo "Set installer/pxe-boot/.env to a local IPv4 address before starting PXE services." >&2
+    exit 1
+fi
+
+sudo podman build -t localhost/bazzite-ostree-web:latest ./httpd
+sudo podman build -t localhost/bazzite-pxe-dnsmasq:latest ./dnsmasq
+sudo podman rm -f bazzite-ostree-web bazzite-pxe-dnsmasq >/dev/null 2>&1 || true
+sudo podman run -d --name bazzite-ostree-web --restart unless-stopped --env-file "${env_file}" -p "${HTTP_PORT}:8080" -v "${pxe_root}/httpd/content:/srv/www:Z" localhost/bazzite-ostree-web:latest
+sudo podman run -d --name bazzite-pxe-dnsmasq --restart unless-stopped --env-file "${env_file}" --network host --cap-add NET_ADMIN --cap-add NET_RAW -v "${pxe_root}/tftp:/srv/tftp:Z" localhost/bazzite-pxe-dnsmasq:latest
+
+sudo podman ps --filter name=bazzite-ostree-web --filter name=bazzite-pxe-dnsmasq --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'

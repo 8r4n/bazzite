@@ -33,10 +33,19 @@ This directory provides a minimal Docker Compose deployment for PXE-booting a Ce
 3. Start the stack:
 
    ```bash
-   docker compose up --build -d
+   just pxe-up
    ```
 
+   This helper prefers `docker compose` or `podman compose` when available. If no compose provider is installed and local `podman` exists, it falls back to building and running the two services directly with rootful Podman.
+   It also validates that `PXE_SERVER_IP` is assigned on the local host before launching the PXE service.
+
 4. Point your PXE clients at the host running this compose stack.
+
+5. Stop the stack when you are done:
+
+   ```bash
+   just pxe-down
+   ```
 
 The generated kickstart is written to `httpd/content/kickstarts/centos-ostree.ks` when the web service starts.
 
