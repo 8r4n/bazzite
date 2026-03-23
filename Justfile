@@ -39,6 +39,10 @@ just-fix:
 build target="" image="":
     @{{ project_root }}/just_scripts/build-image.sh {{ target }} {{ image }} 
 
+# Rechunk local CentOS image into an rpm-ostree-compatible OCI archive
+rechunk-local target="bazzite-custom" image="centos":
+    @{{ project_root }}/just_scripts/rechunk-local-image.sh {{ target }} {{ image }}
+
 # Build ISO
 build-iso-release target="" image="":
     @{{ project_root }}/just_scripts/build-iso.sh {{ target }} {{ image }} 

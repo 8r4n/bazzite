@@ -1,0 +1,10 @@
+FROM quay.io/centos/centos:stream10
+
+RUN dnf -y install dnsmasq syslinux-tftpboot && \
+    dnf clean all
+
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+
+RUN chmod 0755 /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

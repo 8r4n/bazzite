@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -e
+if [[ "$1" == "run" ]]; then
+    shift
+    exec /usr/bin/podman run --network host "$@"
+fi
+exec /usr/bin/podman "$@"
