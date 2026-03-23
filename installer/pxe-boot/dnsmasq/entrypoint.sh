@@ -11,9 +11,21 @@ set -euo pipefail
 
 mkdir -p /srv/tftp/pxelinux.cfg
 
+syslinux_root=/usr/share/syslinux
+if [[ -d /tftpboot ]]; then
+    syslinux_root=/tftpboot
+fi
+
 for asset in lpxelinux.0 ldlinux.c32 libcom32.c32 libutil.c32 menu.c32; do
-    if [[ -f "/usr/share/syslinux/${asset}" ]]; then
-        cp -f "/usr/share/syslinux/${asset}" "/srv/tftp/${asset}"
+    if [[ -f "${syslinux_root}/${asset}" ]]; then
+        cp -f "${syslinux_root}/${asset}" "/srv/tftp/${asset}"
+    fi
+done
+
+for asset in lpxelinux.0 ldlinux.c32 libcom32.c32 libutil.c32 menu.c32; do
+    if [[ ! -f "/srv/tftp/${asset}" ]]; then
+        echo "Missing required PXE asset: ${asset}" >&2
+        exit 1
     fi
 done
 
