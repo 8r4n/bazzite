@@ -1,7 +1,7 @@
 # Kickstart for deploying the CentOS Stream 10 rpm-ostree image built by this repository.
 #
-# Update the ostreecontainer image reference below if you publish the image under a different
-# registry, namespace, or tag.
+# Replace <your-github-owner> below with the GitHub username or organization that publishes your
+# image before using this kickstart. Adjust the registry or tag as needed for your deployment.
 
 text
 lang en_US.UTF-8
@@ -14,6 +14,7 @@ services --enabled=sshd
 reboot
 
 clearpart --all --initlabel
-autopart --type=btrfs --noswap
+autopart --type=btrfs
 
-ostreecontainer --url=ghcr.io/8r4n/bazzite-custom-gnome-c10s:stable --transport=registry --no-signature-verification
+# Replace <your-github-owner> with the GitHub user or organization that publishes your image.
+ostreecontainer --url=ghcr.io/<your-github-owner>/bazzite-custom-gnome-c10s:stable --transport=registry

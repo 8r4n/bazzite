@@ -381,7 +381,7 @@ After the workflow finishes, rebase a CentOS Stream 10 system to the published a
 rpm-ostree rebase ostree-unverified-registry:ghcr.io/<your-github-owner>/bazzite-custom-gnome-c10s:stable
 ```
 
-An example kickstart for deploying that CentOS Stream 10 rpm-ostree image is available at `installer/kickstarts/centos-stream-10.ks`.
+An example kickstart for deploying that CentOS Stream 10 rpm-ostree image is available at `installer/kickstarts/centos-stream-10.ks`. Replace the `<your-github-owner>` placeholder in that file before using it.
 
 This CentOS variant is a reduced desktop image. It does not publish deck, gaming, or NVIDIA-specific feature sets.
 
