@@ -403,6 +403,7 @@ By default this creates a local image tagged like:
 
 ```text
 localhost/bazzite-custom-gnome-c10s-build:10-<your-branch>
+localhost/bazzite-custom-gnome-r10s-build:10-<your-branch>
 ```
 
 The build also records the ISO/tree identity in both the OCI labels and `/usr/share/ublue-os/image-info.json`, which makes it possible to verify which CentOS media produced the bootc base image, the OCI image, and the rechunked OSTree output.
