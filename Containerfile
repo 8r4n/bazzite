@@ -45,6 +45,10 @@ ARG VERSION_PRETTY=""
 ARG BASE_IMAGE_FAMILY=""
 ARG BASE_VARIANT_NAME=""
 ARG BASE_VERSION=""
+ARG CENTOS_INSTALL_ROOT=""
+ARG CENTOS_INSTALL_SOURCE_KIND=""
+ARG CENTOS_INSTALL_SOURCE_ID=""
+ARG CENTOS_INSTALL_SOURCE_SHA256=""
 
 FROM ${KERNEL_REF} AS kernel
 FROM ${NVIDIA_REF} AS nvidia
@@ -70,12 +74,69 @@ ARG FEDORA_VERSION
 ARG SHA_HEAD_SHORT
 ARG VERSION_TAG
 ARG VERSION_PRETTY
+ARG CENTOS_INSTALL_ROOT
+ARG CENTOS_INSTALL_SOURCE_KIND
+ARG CENTOS_INSTALL_SOURCE_ID
+ARG CENTOS_INSTALL_SOURCE_SHA256
 
 RUN --mount=type=bind,target=/tmp/context \
     cp -a /tmp/context/system_files/desktop/shared/. /tmp/context/system_files/desktop/${BASE_IMAGE_FAMILY}/. / && \
     find /usr/share/ublue-os/docs -type f -exec setfattr -n user.component -v "ublue-docs" {} +
 
+RUN --mount=type=cache,dst=/var/cache \
+    --mount=type=cache,dst=/var/log \
+    --mount=type=bind,target=/tmp/context \
+    --mount=type=tmpfs,dst=/tmp \
+    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" ]]; then \
+        package_manager=$(command -v dnf5 || command -v dnf) && \
+        install_root="/tmp/context/${CENTOS_INSTALL_ROOT}" && \
+        [[ -n "${CENTOS_INSTALL_ROOT}" ]] && \
+        [[ -n "${package_manager}" ]] && \
+        [[ -d "${install_root}/BaseOS/repodata" ]] && \
+        [[ -d "${install_root}/AppStream/repodata" ]] && \
+        printf '%s\n' \
+            '[bazzite-centos-baseos]' \
+            'name=Bazzite CentOS BaseOS' \
+            "baseurl=file://${install_root}/BaseOS/" \
+            'enabled=1' \
+            'gpgcheck=0' \
+            'repo_gpgcheck=0' \
+            '' \
+            '[bazzite-centos-appstream]' \
+            'name=Bazzite CentOS AppStream' \
+            "baseurl=file://${install_root}/AppStream/" \
+            'enabled=1' \
+            'gpgcheck=0' \
+            'repo_gpgcheck=0' \
+            > /etc/yum.repos.d/bazzite-centos-install-root.repo && \
+        if [[ -d "${install_root}/CRB/repodata" ]]; then \
+            printf '%s\n' \
+                '' \
+                '[bazzite-centos-crb]' \
+                'name=Bazzite CentOS CRB' \
+                "baseurl=file://${install_root}/CRB/" \
+                'enabled=1' \
+                'gpgcheck=0' \
+                'repo_gpgcheck=0' \
+                >> /etc/yum.repos.d/bazzite-centos-install-root.repo && \
+            "${package_manager}" -y distro-sync --refresh --best --allowerasing --disablerepo='*' \
+                --enablerepo=bazzite-centos-baseos \
+                --enablerepo=bazzite-centos-appstream \
+                --enablerepo=bazzite-centos-crb \
+        ; else \
+            "${package_manager}" -y distro-sync --refresh --best --allowerasing --disablerepo='*' \
+                --enablerepo=bazzite-centos-baseos \
+                --enablerepo=bazzite-centos-appstream \
+        ; fi && \
+        rm -f /etc/yum.repos.d/bazzite-centos-install-root.repo && \
+        "${package_manager}" clean all \
+    ; fi
+
 COPY firmware /
+
+LABEL org.bazzite.centos-install-source-kind="${CENTOS_INSTALL_SOURCE_KIND}" \
+    org.bazzite.centos-install-source-id="${CENTOS_INSTALL_SOURCE_ID}" \
+    org.bazzite.centos-install-source-sha256="${CENTOS_INSTALL_SOURCE_SHA256}"
 
 # Copy Homebrew files from the brew image
 RUN --mount=type=bind,from=brew,source=/system_files,target=/tmp/brew_source \
@@ -576,6 +637,10 @@ RUN --mount=type=cache,dst=/var/cache \
     if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" ]]; then \
         rm -f /etc/profile.d/toolbox.sh && \
         mkdir -p /var/tmp && chmod 1777 /var/tmp && \
+        mkdir -p /sysroot/ostree && \
+        ln -sfn sysroot/ostree /ostree && \
+        mkdir -p /usr/share/rpm && \
+        ln -sfn ../../lib/sysimage/rpm/rpmdb.sqlite /usr/share/rpm/rpmdb.sqlite && \
         if command -v glib-compile-schemas >/dev/null 2>&1; then \
             glib-compile-schemas /usr/share/glib-2.0/schemas &>/dev/null || true; \
         fi && \

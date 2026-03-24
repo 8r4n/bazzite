@@ -27,5 +27,6 @@ if ! command -v podman >/dev/null 2>&1; then
     exit 1
 fi
 
-sudo podman rm -f bazzite-ostree-web bazzite-pxe-dnsmasq >/dev/null 2>&1 || true
-sudo podman ps -a --filter name=bazzite-ostree-web --filter name=bazzite-pxe-dnsmasq --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+podman rm -f pxe-local-registry bazzite-airgap-registry bazzite-ostree-web bazzite-pxe-dnsmasq >/dev/null 2>&1 || true
+sudo podman rm -f pxe-local-registry bazzite-airgap-registry bazzite-ostree-web bazzite-pxe-dnsmasq >/dev/null 2>&1 || true
+sudo podman ps -a --filter name=bazzite-airgap-registry --filter name=pxe-local-registry --filter name=bazzite-ostree-web --filter name=bazzite-pxe-dnsmasq --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'

@@ -17,6 +17,9 @@ IMAGE_BRANCH_NORMALIZED=$IMAGE_BRANCH
 BASE_VERSION="${BASE_VERSION:-$(rpm -E %fedora)}"
 BASE_VARIANT_NAME="${BASE_VARIANT_NAME:-${BASE_IMAGE_NAME^}}"
 FEDORA_VERSION="${FEDORA_VERSION:-$(rpm -E %fedora 2>/dev/null || true)}"
+CENTOS_INSTALL_SOURCE_KIND="${CENTOS_INSTALL_SOURCE_KIND:-}"
+CENTOS_INSTALL_SOURCE_ID="${CENTOS_INSTALL_SOURCE_ID:-}"
+CENTOS_INSTALL_SOURCE_SHA256="${CENTOS_INSTALL_SOURCE_SHA256:-}"
 
 if [[ $IMAGE_BRANCH_NORMALIZED == "main" ]]; then
   IMAGE_BRANCH_NORMALIZED="stable"
@@ -35,6 +38,9 @@ cat > $IMAGE_INFO <<EOF
   "base-image-pretty-name": "$BASE_VARIANT_NAME",
   "base-version": "$BASE_VERSION",
   "fedora-version": "$FEDORA_VERSION",
+  "centos-install-source-kind": "$CENTOS_INSTALL_SOURCE_KIND",
+  "centos-install-source-id": "$CENTOS_INSTALL_SOURCE_ID",
+  "centos-install-source-sha256": "$CENTOS_INSTALL_SOURCE_SHA256",
   "version": "$VERSION_TAG",
   "version-pretty": "$VERSION_PRETTY"
 }

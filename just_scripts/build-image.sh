@@ -7,13 +7,47 @@ if [[ -z ${git_branch} ]]; then
     git_branch=$(git branch --show-current)
 fi
 
+git_branch_tag=${git_branch//\//-}
+git_branch_tag=${git_branch_tag//[^a-zA-Z0-9_.-]/-}
+
 # Get Inputs
 target=$1
 image=$2
+requested_target=$target
+requested_image=$image
 
 # Set image/target/version based on inputs
 # shellcheck disable=SC2154,SC1091
 . "${project_root}/just_scripts/get-defaults.sh"
+
+require_command() {
+    local cmd=$1
+    if ! command -v "${cmd}" >/dev/null 2>&1; then
+        echo "Missing required command: ${cmd}" >&2
+        exit 1
+    fi
+}
+
+hash_install_root() {
+    local install_root=$1
+
+    find "${install_root}" -type f \( -path '*/repodata/repomd.xml' -o -name '.treeinfo' \) -print0 \
+        | sort -z \
+        | xargs -0 sha256sum \
+        | sha256sum \
+        | awk '{print $1}'
+}
+
+validate_install_root() {
+    local install_root=$1
+
+    for repo_name in BaseOS AppStream; do
+        if [[ ! -d "${install_root}/${repo_name}/repodata" ]]; then
+            echo "CentOS install root is missing ${repo_name}/repodata: ${install_root}" >&2
+            exit 1
+        fi
+    done
+}
 
 # Get info
 container_mgr=$(just _container_mgr)
@@ -21,6 +55,11 @@ container_mgr=$(just _container_mgr)
 . "${project_root}/just_scripts/container_env.sh"
 tag=$(just _tag "${image}")
 container_target=${target}
+
+centos_install_root_rel=""
+centos_install_source_kind=""
+centos_install_source_id=""
+centos_install_source_sha256=""
 
 if [[ ${target} == "bazzite-custom" ]]; then
     container_target="bazzite"
@@ -32,11 +71,66 @@ else
     flavor="main"
 fi
 
+if [[ ${base_image_name} == "centos-stream-10" ]]; then
+    if [[ -z ${BAZZITE_CENTOS_BASE_IMAGE:-} ]]; then
+        BAZZITE_CENTOS_BASE_IMAGE=$("${project_root}/just_scripts/build-centos-base-image.sh" "${requested_target}" "${requested_image}")
+    fi
+
+    if [[ -n ${BAZZITE_CENTOS_INSTALL_ISO:-} && -n ${BAZZITE_CENTOS_INSTALL_ROOT:-} ]]; then
+        echo "Set either BAZZITE_CENTOS_INSTALL_ISO or BAZZITE_CENTOS_INSTALL_ROOT, not both." >&2
+        exit 1
+    fi
+
+    if [[ -z ${BAZZITE_CENTOS_INSTALL_ISO:-} && -z ${BAZZITE_CENTOS_INSTALL_ROOT:-} ]]; then
+        echo "CentOS Stream 10 builds now require BAZZITE_CENTOS_INSTALL_ISO or BAZZITE_CENTOS_INSTALL_ROOT." >&2
+        exit 1
+    fi
+
+    centos_install_root_rel="just_scripts/output/centos-install-root"
+    centos_install_root_abs="${project_root}/${centos_install_root_rel}"
+    rm -rf "${centos_install_root_abs}"
+    mkdir -p "${centos_install_root_abs}"
+
+    if [[ -n ${BAZZITE_CENTOS_INSTALL_ISO:-} ]]; then
+        require_command xorriso
+        require_command sha256sum
+
+        centos_install_iso=$(readlink -f "${BAZZITE_CENTOS_INSTALL_ISO}")
+        if [[ ! -f ${centos_install_iso} ]]; then
+            echo "CentOS install ISO not found: ${BAZZITE_CENTOS_INSTALL_ISO}" >&2
+            exit 1
+        fi
+
+        xorriso -osirrox on -indev "${centos_install_iso}" -extract / "${centos_install_root_abs}" >/dev/null
+        validate_install_root "${centos_install_root_abs}"
+
+        centos_install_source_kind="iso"
+        centos_install_source_id=$(basename "${centos_install_iso}")
+        centos_install_source_sha256=$(sha256sum "${centos_install_iso}" | awk '{print $1}')
+    else
+        require_command rsync
+        require_command sha256sum
+
+        source_install_root=$(readlink -f "${BAZZITE_CENTOS_INSTALL_ROOT}")
+        if [[ ! -d ${source_install_root} ]]; then
+            echo "CentOS install root not found: ${BAZZITE_CENTOS_INSTALL_ROOT}" >&2
+            exit 1
+        fi
+
+        rsync -a --delete "${source_install_root}/" "${centos_install_root_abs}/"
+        validate_install_root "${centos_install_root_abs}"
+
+        centos_install_source_kind="tree"
+        centos_install_source_id=$(basename "${source_install_root}")
+        centos_install_source_sha256=$(hash_install_root "${centos_install_root_abs}")
+    fi
+fi
+
 build_args=(
     -f Containerfile
     --build-arg="IMAGE_NAME=${tag}"
     --build-arg="IMAGE_VENDOR=ublue-os"
-    --build-arg="IMAGE_BRANCH=${git_branch}"
+    --build-arg="IMAGE_BRANCH=${git_branch_tag}"
     --build-arg="BASE_IMAGE_NAME=${base_image_name}"
     --build-arg="BASE_IMAGE_FAMILY=${base_image_family}"
     --build-arg="BASE_VARIANT_NAME=${base_variant_name}"
@@ -47,8 +141,12 @@ build_args=(
     --build-arg="KERNEL_FLAVOR=bazzite"
     --build-arg="SOURCE_IMAGE=${source_image%-main}-${flavor}"
     --build-arg="FEDORA_VERSION=${content_version}"
+    --build-arg="CENTOS_INSTALL_ROOT=${centos_install_root_rel}"
+    --build-arg="CENTOS_INSTALL_SOURCE_KIND=${centos_install_source_kind}"
+    --build-arg="CENTOS_INSTALL_SOURCE_ID=${centos_install_source_id}"
+    --build-arg="CENTOS_INSTALL_SOURCE_SHA256=${centos_install_source_sha256}"
     --target="${container_target}"
-    --tag localhost/"${tag}:${build_version}-${git_branch}"
+    --tag localhost/"${tag}:${build_version}-${git_branch_tag}"
 )
 
 if [[ -n ${BAZZITE_CENTOS_BASE_IMAGE:-} && ${base_image_name} == "centos-stream-10" ]]; then

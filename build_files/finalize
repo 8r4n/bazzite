@@ -19,4 +19,8 @@ fi
 mkdir -p /var/tmp
 chmod -R 1777 /var/tmp
 
+if [[ "${BASE_IMAGE_NAME:-}" == "centos-stream-10" ]]; then
+	exit 0
+fi
+
 ostree container commit

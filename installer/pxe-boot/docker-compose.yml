@@ -1,5 +1,6 @@
 services:
   pxe:
+    image: ${PXE_DNSMASQ_IMAGE:-localhost/bazzite-pxe-dnsmasq:latest}
     build:
       context: ./dnsmasq
       dockerfile: Containerfile
@@ -22,6 +23,7 @@ services:
       - ./tftp:/srv/tftp:Z
 
   ostree-web:
+    image: ${PXE_OSTREE_WEB_IMAGE:-localhost/bazzite-ostree-web:latest}
     build:
       context: ./httpd
       dockerfile: Containerfile
@@ -41,3 +43,12 @@ services:
     restart: unless-stopped
     volumes:
       - ./httpd/content:/srv/www:Z
+
+  registry:
+    image: ${PXE_REGISTRY_IMAGE:-docker.io/library/registry:2}
+    container_name: bazzite-airgap-registry
+    ports:
+      - "${REGISTRY_PORT:-5000}:5000"
+    restart: unless-stopped
+    volumes:
+      - ./registry/data:/var/lib/registry:Z
