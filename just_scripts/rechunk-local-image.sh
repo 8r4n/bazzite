@@ -9,6 +9,9 @@ if [[ -z ${git_branch:-} ]]; then
     git_branch=$(git -C "${project_root}" branch --show-current)
 fi
 
+git_branch_tag=${git_branch//\//-}
+git_branch_tag=${git_branch_tag//[^a-zA-Z0-9_.-]/-}
+
 target=${1:-bazzite-custom}
 image=${2:-centos}
 
@@ -32,9 +35,9 @@ if ! command -v skopeo >/dev/null 2>&1; then
 fi
 
 tag=$(just _tag "${image}")
-ref=${BAZZITE_RECHUNK_REF:-localhost/${tag}:${build_version}-${git_branch}}
+ref=${BAZZITE_RECHUNK_REF:-localhost/${tag}:${build_version}-${git_branch_tag}}
 prev_ref=${BAZZITE_RECHUNK_PREV_REF:-}
-version=${BAZZITE_RECHUNK_VERSION:-${build_version}-${git_branch}}
+version=${BAZZITE_RECHUNK_VERSION:-${build_version}-${git_branch_tag}}
 pretty=${BAZZITE_RECHUNK_PRETTY:-Local ${base_variant_name} (${git_branch})}
 description=${BAZZITE_RECHUNK_DESCRIPTION:-Bazzite ${base_variant_name} local rechunk build.}
 revision=${BAZZITE_RECHUNK_REVISION:-$(git -C "${project_root}" rev-parse HEAD)}

@@ -336,17 +336,37 @@ The `centos`, `centos-stream-10`, and `c10s` image inputs all switch the build t
 - Deck and NVIDIA targets are rejected by `just_scripts/get-defaults.sh`.
 - The gaming stack, NVIDIA-specific layering, Homebrew provisioning, and the standard per-user Bazzite desktop setup are skipped.
 
-Set `BAZZITE_CENTOS_BASE_IMAGE` to the CentOS Stream 10 bootc/ostree source image you want to compose from, then run:
+Point the build at either a downloaded CentOS installer ISO or an already extracted install tree. You can still set `BAZZITE_CENTOS_BASE_IMAGE` explicitly, but if you leave it unset the build will now bootstrap a local CentOS Stream 10 bootc base image from those ISO-backed repos first. The main compose then stages the same tree locally and runs a CentOS-only `dnf5 distro-sync` against it before producing the final OCI image, so the later `rechunk-local` OSTree artifact inherits the same package source.
+
+Using an ISO file directly:
 
 ```bash
-BAZZITE_CENTOS_BASE_IMAGE=quay.io/<your-org>/<your-centos-stream-10-image>:stream10 just build bazzite-custom centos
+BAZZITE_CENTOS_INSTALL_ISO=/path/to/CentOS-Stream-10.iso \
+just build bazzite-custom centos
+```
+
+Using a previously extracted install tree:
+
+```bash
+BAZZITE_CENTOS_INSTALL_ROOT=/path/to/centos-install-root \
+just build bazzite-custom centos
+```
+
+If you only want to prepare or refresh the local CentOS base image itself, run:
+
+```bash
+BAZZITE_CENTOS_INSTALL_ISO=/path/to/CentOS-Stream-10.iso \
+just build-centos-base
 ```
 
 The build script resolves the rest of the CentOS-specific defaults automatically:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `BAZZITE_CENTOS_BASE_IMAGE` | _required_ | The CentOS Stream 10 bootc/ostree base image passed to `Containerfile` as `BASE_IMAGE`. |
+| `BAZZITE_CENTOS_BASE_IMAGE` | `localhost/bazzite-centos-stream-10-base:stream10` when auto-bootstrapped | The CentOS Stream 10 bootc/ostree base image passed to `Containerfile` as `BASE_IMAGE`. |
+| `BAZZITE_CENTOS_INSTALL_ISO` | _required unless `BAZZITE_CENTOS_INSTALL_ROOT` is set_ | Local CentOS installer ISO used to stage `BaseOS` and `AppStream` into the build context. |
+| `BAZZITE_CENTOS_INSTALL_ROOT` | _required unless `BAZZITE_CENTOS_INSTALL_ISO` is set_ | Path to an extracted CentOS install tree containing `BaseOS/repodata` and `AppStream/repodata`. |
+| `BAZZITE_CENTOS_BASE_IMAGE_OUTPUT` | `localhost/bazzite-centos-stream-10-base:stream10` | Override the tag used when `just build-centos-base` or auto-bootstrap creates the local base image. |
 | `BAZZITE_CENTOS_SOURCE_IMAGE` | `centos-stream-10-main` | The source image flavor used for labels and image metadata. |
 | `BAZZITE_CENTOS_VERSION` | `10` | The CentOS build version used in the output tag. |
 | `BAZZITE_CENTOS_FEDORA_VERSION` | `43` | The Fedora content version used for shared package/version wiring in the compose. |
@@ -356,6 +376,10 @@ By default this creates a local image tagged like:
 ```text
 localhost/bazzite-custom-gnome-c10s-build:10-<your-branch>
 ```
+
+The build also records the ISO/tree identity in both the OCI labels and `/usr/share/ublue-os/image-info.json`, which makes it possible to verify which CentOS media produced the bootc base image, the OCI image, and the rechunked OSTree output.
+
+The bootstrap step uses host `dnf5` with privilege escalation through the existing `sudoif` helper, so the host needs `dnf5` available when you rely on auto-bootstrap or `just build-centos-base`.
 
 If you want the upstream-flavored CentOS desktop image instead of the custom package set, replace `bazzite-custom` with `bazzite`.
 

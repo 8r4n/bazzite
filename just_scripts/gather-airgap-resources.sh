@@ -16,7 +16,8 @@ Options:
   --profile <ostree|container|both>   Bundle type to gather. Default: both
   --output-dir <path>                 Bundle destination. Default: just_scripts/output/airgap/<timestamp>
   --env-file <path>                   PXE env file to source. Default: installer/pxe-boot/.env or .env.example
-  --install-source <path|url>         Override CENTOS_INSTALL_ROOT
+    --install-iso <path>                Path to the CentOS ISO used to seed the installer tree
+    --install-source <path>             Override installer tree with a local extracted directory
   --ostree-source <path|url>          Override OSTREE repo source
   --container-source <transport:ref>  Override container image source for skopeo
   --force                             Replace an existing output directory
@@ -26,6 +27,7 @@ Environment overrides:
   AIRGAP_PROFILE
   AIRGAP_OUTPUT_DIR
   AIRGAP_ENV_FILE
+    AIRGAP_INSTALL_ISO
   AIRGAP_INSTALL_SOURCE
   AIRGAP_OSTREE_SOURCE
   AIRGAP_CONTAINER_SOURCE
@@ -62,41 +64,20 @@ is_true() {
     esac
 }
 
-count_url_path_segments() {
-    local url=$1
-    local without_scheme=${url#*://}
-    local path=/${without_scheme#*/}
-    local clean_path=${path%%\?*}
-    clean_path=${clean_path%%#*}
-    local count=0
-    local segment
-
-    IFS=/ read -r -a segments <<<"${clean_path}"
-    for segment in "${segments[@]}"; do
-        [[ -z ${segment} ]] && continue
-        ((count += 1))
-    done
-
-    printf '%s' "${count}"
-}
-
-mirror_http_tree() {
-    local source_url=$1
+extract_iso_tree() {
+    local iso_path=$1
     local destination=$2
-    local cut_dirs
 
-    require_cmd wget
-    cut_dirs=$(count_url_path_segments "${source_url}")
+    require_cmd xorriso
+    [[ -f ${iso_path} ]] || die "ISO not found: ${iso_path}"
 
-    wget \
-        --mirror \
-        --continue \
-        --timestamping \
-        --no-host-directories \
-        --cut-dirs="${cut_dirs}" \
-        --reject 'index.html*' \
-        --directory-prefix "${destination}" \
-        "${source_url%/}/"
+    rm -rf "${destination}"
+    mkdir -p "${destination}"
+
+    xorriso -osirrox on -indev "${iso_path}" -extract / "${destination}" >/dev/null
+
+    [[ -f ${destination}/images/pxeboot/vmlinuz ]] || die "ISO ${iso_path} does not contain images/pxeboot/vmlinuz"
+    [[ -f ${destination}/images/pxeboot/initrd.img ]] || die "ISO ${iso_path} does not contain images/pxeboot/initrd.img"
 }
 
 save_image_archive() {
@@ -147,18 +128,21 @@ sync_install_root() {
     local source=$1
     local destination=$2
 
-    mkdir -p "${destination}"
-
     if [[ -d ${source} ]]; then
         log "Copying local installer tree from ${source}"
         sync_local_tree "${source}" "${destination}"
         return
     fi
 
+    if [[ -f ${source} && ${source} == *.iso ]]; then
+        log "Extracting installer tree from ISO ${source}"
+        extract_iso_tree "${source}" "${destination}"
+        return
+    fi
+
     case "${source}" in
         http://*|https://*)
-            log "Mirroring installer tree from ${source}"
-            mirror_http_tree "${source}" "${destination}"
+            die "Remote installer trees are no longer supported for airgap gathering. Download a CentOS ISO and pass --install-iso or AIRGAP_INSTALL_ISO instead."
             ;;
         *)
             die "Unsupported install tree source: ${source}"
@@ -246,9 +230,16 @@ resolve_container_source() {
 profile=${AIRGAP_PROFILE:-both}
 output_dir=${AIRGAP_OUTPUT_DIR:-}
 env_file=${AIRGAP_ENV_FILE:-}
+install_iso_override=${AIRGAP_INSTALL_ISO:-}
 install_source_override=${AIRGAP_INSTALL_SOURCE:-}
 ostree_source_override=${AIRGAP_OSTREE_SOURCE:-}
 container_source_override=${AIRGAP_CONTAINER_SOURCE:-}
+explicit_ostree_repo_url=${OSTREE_REPO_URL-}
+explicit_ostree_ref=${OSTREE_REF-}
+explicit_ostree_container_url=${OSTREE_CONTAINER_URL-}
+has_explicit_ostree_repo_url=${OSTREE_REPO_URL+x}
+has_explicit_ostree_ref=${OSTREE_REF+x}
+has_explicit_ostree_container_url=${OSTREE_CONTAINER_URL+x}
 force=false
 
 while [[ $# -gt 0 ]]; do
@@ -263,6 +254,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --env-file)
             env_file=$2
+            shift 2
+            ;;
+        --install-iso)
+            install_iso_override=$2
             shift 2
             ;;
         --install-source)
@@ -313,6 +308,18 @@ set -a
 . "${env_file}"
 set +a
 
+if [[ -n ${has_explicit_ostree_repo_url:-} ]]; then
+    OSTREE_REPO_URL=${explicit_ostree_repo_url}
+fi
+
+if [[ -n ${has_explicit_ostree_ref:-} ]]; then
+    OSTREE_REF=${explicit_ostree_ref}
+fi
+
+if [[ -n ${has_explicit_ostree_container_url:-} ]]; then
+    OSTREE_CONTAINER_URL=${explicit_ostree_container_url}
+fi
+
 if [[ -z ${output_dir} ]]; then
     output_dir="${project_root}/just_scripts/output/airgap/$(date -u +%Y%m%dT%H%M%SZ)"
 fi
@@ -330,7 +337,30 @@ require_cmd "$(${project_root}/just_scripts/container_mgr.sh)"
 
 container_mgr=$("${project_root}/just_scripts/container_mgr.sh")
 
-install_source=${install_source_override:-${CENTOS_INSTALL_ROOT}}
+install_source=
+install_source_kind=
+
+if [[ -n ${install_iso_override} ]]; then
+    install_source=${install_iso_override}
+    install_source_kind=iso
+elif [[ -n ${install_source_override} ]]; then
+    install_source=${install_source_override}
+    install_source_kind=directory
+elif [[ -n ${CENTOS_INSTALL_ROOT:-} && -d ${CENTOS_INSTALL_ROOT} ]]; then
+    install_source=${CENTOS_INSTALL_ROOT}
+    install_source_kind=directory
+fi
+
+[[ -n ${install_source} ]] || die "No local installer source was found. Download a CentOS ISO and pass --install-iso or set AIRGAP_INSTALL_ISO."
+
+if [[ ${install_source_kind} == iso && ! -f ${install_source} ]]; then
+    die "Installer ISO not found: ${install_source}"
+fi
+
+if [[ ${install_source_kind} == directory && ! -d ${install_source} ]]; then
+    die "Installer tree directory not found: ${install_source}"
+fi
+
 ostree_source=${ostree_source_override:-}
 
 if [[ -z ${ostree_source} && -d ${project_root}/installer/pxe-boot/httpd/content/ostree/repo ]]; then
@@ -394,6 +424,7 @@ manifest_path="${bundle_manifest_dir}/airgap.env"
     printf 'AIRGAP_PROFILE=%s\n' "$(shell_quote "${profile}")"
     printf 'AIRGAP_CREATED_AT=%s\n' "$(shell_quote "$(date -u +%Y-%m-%dT%H:%M:%SZ)")"
     printf 'AIRGAP_INSTALL_SOURCE=%s\n' "$(shell_quote "${install_source}")"
+    printf 'AIRGAP_INSTALL_SOURCE_KIND=%s\n' "$(shell_quote "${install_source_kind}")"
     printf 'AIRGAP_INSTALL_ROOT_RELATIVE=%s\n' "$(shell_quote "http-root/install-root")"
     printf 'AIRGAP_PXE_DNSMASQ_IMAGE=%s\n' "$(shell_quote "${pxe_dnsmasq_image}")"
     printf 'AIRGAP_PXE_OSTREE_WEB_IMAGE=%s\n' "$(shell_quote "${pxe_web_image}")"

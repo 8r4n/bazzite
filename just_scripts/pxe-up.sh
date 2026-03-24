@@ -59,14 +59,19 @@ fi
 
 mkdir -p "${pxe_root}/registry/data"
 
+cleanup_registry_containers() {
+    podman rm -f pxe-local-registry bazzite-airgap-registry bazzite-ostree-web bazzite-pxe-dnsmasq >/dev/null 2>&1 || true
+    sudo podman rm -f pxe-local-registry bazzite-airgap-registry bazzite-ostree-web bazzite-pxe-dnsmasq >/dev/null 2>&1 || true
+}
+
 if [[ ${PXE_SKIP_BUILD,,} != "true" && ${PXE_SKIP_BUILD} != "1" ]]; then
     sudo podman build -t "${PXE_OSTREE_WEB_IMAGE}" ./httpd
     sudo podman build -t "${PXE_DNSMASQ_IMAGE}" ./dnsmasq
 fi
 
-sudo podman rm -f bazzite-airgap-registry bazzite-ostree-web bazzite-pxe-dnsmasq >/dev/null 2>&1 || true
+cleanup_registry_containers
 sudo podman run -d --name bazzite-airgap-registry --restart unless-stopped -p "${REGISTRY_PORT}:5000" -v "${pxe_root}/registry/data:/var/lib/registry:Z" "${PXE_REGISTRY_IMAGE}"
 sudo podman run -d --name bazzite-ostree-web --restart unless-stopped --env-file "${env_file}" -p "${HTTP_PORT}:8080" -v "${pxe_root}/httpd/content:/srv/www:Z" "${PXE_OSTREE_WEB_IMAGE}"
 sudo podman run -d --name bazzite-pxe-dnsmasq --restart unless-stopped --env-file "${env_file}" --network host --cap-add NET_ADMIN --cap-add NET_RAW -v "${pxe_root}/tftp:/srv/tftp:Z" "${PXE_DNSMASQ_IMAGE}"
 
-sudo podman ps --filter name=bazzite-airgap-registry --filter name=bazzite-ostree-web --filter name=bazzite-pxe-dnsmasq --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+sudo podman ps --filter name=bazzite-airgap-registry --filter name=pxe-local-registry --filter name=bazzite-ostree-web --filter name=bazzite-pxe-dnsmasq --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'

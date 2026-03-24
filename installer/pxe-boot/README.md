@@ -2,7 +2,7 @@
 
 This directory provides a minimal Docker Compose deployment for PXE-booting a CentOS Stream base installer and handing the install off to either a plain OSTree or an ostree-container kickstart.
 
-For isolated-network deployment, see `AIRGAP.md` in this directory.
+For isolated-network deployment, see `AIRGAP.md` in this directory. The airgap workflow now expects the CentOS installer tree to be extracted from a downloaded CentOS ISO rather than mirrored from a public web tree.
 
 ## Services
 

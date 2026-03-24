@@ -6,6 +6,9 @@ if [[ -z ${project_root:-} ]]; then
     project_root=$(git rev-parse --show-toplevel)
 fi
 
+# shellcheck disable=SC1091
+. "${project_root}/just_scripts/sudoif.sh"
+
 usage() {
     cat <<'EOF'
 Usage: stage-airgap-resources.sh [options]
@@ -154,7 +157,8 @@ pxe_root="${project_root}/installer/pxe-boot"
 mkdir -p "${pxe_root}/httpd/content" "${pxe_root}/registry/data"
 
 log "Syncing HTTP content"
-rsync -aH --delete "${bundle_dir}/http-root/" "${pxe_root}/httpd/content/"
+sudoif rsync -aH --delete "${bundle_dir}/http-root/" "${pxe_root}/httpd/content/"
+sudoif chown -R "$(id -u)":"$(id -g)" "${pxe_root}/httpd/content"
 
 log "Loading prebuilt PXE images"
 load_image_archive "${bundle_dir}/${AIRGAP_PXE_DNSMASQ_ARCHIVE}"

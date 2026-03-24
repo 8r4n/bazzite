@@ -6,11 +6,14 @@ This PXE workflow can run fully offline, but only if you collect all external de
 - The PXE service images are built from online package sources.
 - `DEPLOYMENT_TYPE=container` needs a reachable container registry.
 
+The installer-tree gap is now handled by extracting the PXE install tree from a downloaded CentOS ISO instead of mirroring a public web tree.
+
 ## Resource Checklist
 
 You need these artifacts before moving into the isolated network:
 
-- A mirrored CentOS install tree for `CENTOS_INSTALL_ROOT`
+- A downloaded CentOS ISO that contains the installer tree used for PXE
+- The extracted installer tree generated from that ISO for `CENTOS_INSTALL_ROOT`
 - Prebuilt `bazzite-pxe-dnsmasq` and `bazzite-ostree-web` images
 - A `registry:2` image for the local airgap registry
 - Either a mirrored OSTree repository or a container image archive, depending on install mode
@@ -20,11 +23,11 @@ You need these artifacts before moving into the isolated network:
 
 Connected staging host:
 
-- Internet access to the upstream installer tree, container registry, and OSTree source
+- Internet access to download a newer CentOS ISO when you refresh the installer payload, plus any container or OSTree sources you choose to bundle
 - `podman` or `docker`
 - `skopeo`
 - `rsync`
-- `wget` when mirroring the installer tree over HTTP
+- `xorriso` to extract the installer tree from the ISO
 - `ostree` when gathering an OSTree repo from HTTP
 
 Airgapped PXE host:
@@ -43,14 +46,15 @@ Measured from the current repository snapshot:
 - Existing OSTree repo under `installer/pxe-boot/httpd/content/ostree/repo`: about `1.6 GiB`
 - Existing rechunk output under `just_scripts/output/rechunk`: about `978 MiB`
 
-Additional storage is required for the mirrored CentOS install tree and saved container images. Budget at least `15 GiB` for a single install mode and `20-25 GiB` if you want both OSTree and container modes available in the same transfer bundle.
+Additional storage is required for the extracted CentOS install tree, the ISO itself if you keep it in the bundle area, and saved container images. Budget at least `15 GiB` for a single install mode and `20-25 GiB` if you want both OSTree and container modes available in the same transfer bundle.
 
 ## Connected-Side Workflow
 
-1. Build or pull the target container image if you plan to test `DEPLOYMENT_TYPE=container`.
-2. Run `just gather-airgap`.
-3. If your container source is not directly reachable through `OSTREE_CONTAINER_URL`, rerun with `AIRGAP_CONTAINER_SOURCE=<transport:ref>`.
-4. Transfer the resulting directory under `just_scripts/output/airgap/` into the isolated environment.
+1. Download the CentOS ISO you want to standardize on for PXE updates.
+2. Build or pull the target container image if you plan to test `DEPLOYMENT_TYPE=container`.
+3. Run `AIRGAP_INSTALL_ISO=/path/to/CentOS-Stream.iso just gather-airgap`.
+4. If your container source is not directly reachable through `OSTREE_CONTAINER_URL`, rerun with `AIRGAP_CONTAINER_SOURCE=<transport:ref>`.
+5. Transfer the resulting directory under `just_scripts/output/airgap/` into the isolated environment.
 
 ## Airgapped-Side Workflow
 
@@ -65,3 +69,13 @@ Additional storage is required for the mirrored CentOS install tree and saved co
 - The staged airgap env rewrites `OSTREE_REPO_URL` to `http://<PXE_SERVER_IP>:<HTTP_PORT>/ostree/repo`.
 - The staged airgap env rewrites `OSTREE_CONTAINER_URL` to `PXE_SERVER_IP:REGISTRY_PORT/<name>:<tag>` and enables `OSTREE_CONTAINER_NO_SIGNATURE_VERIFICATION=true`.
 - `PXE_SKIP_BUILD=true` is set so the airgapped host uses the prebuilt PXE service images instead of trying to rebuild them.
+
+## Update Model
+
+To refresh the installer payload for a future airgapped cycle:
+
+1. Download the newer CentOS ISO.
+2. Re-run `just gather-airgap` with `AIRGAP_INSTALL_ISO` pointing at that ISO.
+3. Re-stage the resulting bundle on the isolated PXE host.
+
+This avoids relying on public installer web trees for PXE refreshes.

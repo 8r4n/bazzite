@@ -1,6 +1,9 @@
 #!/usr/bin/bash
 function sudoif(){
-    if [[ "${TERM_PROGRAM}" == "vscode" && \
+    if [[ $(command -v sudo) ]] && /usr/bin/sudo -n true >/dev/null 2>&1; then
+        /usr/bin/sudo "$@" \
+        || exit 1
+    elif [[ "${TERM_PROGRAM}" == "vscode" && \
           ! -f /run/.containerenv && \
           ! -f /.dockerenv ]]; then
         [[ $(command -v systemd-run) ]] && \
