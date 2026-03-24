@@ -19,6 +19,9 @@ valid_images=(
     centos
     centos-stream-10
     c10s
+    rhel
+    rhel-10
+    r10s
 )
 image=${image,,}
 if [[ ! ${valid_images[*]} =~ ${image} ]]; then
@@ -73,14 +76,27 @@ case "${image}" in
         desktop="-gnome"
         image_variant_suffix="-c10s"
         ;;
+    rhel|rhel-10|r10s)
+        base_image_name="rhel-10"
+        base_image_family="silverblue"
+        base_variant_name="RHEL 10"
+        source_image="${BAZZITE_RHEL_SOURCE_IMAGE:-rhel-10-main}"
+        build_version="${BAZZITE_RHEL_VERSION:-10}"
+        content_version="${BAZZITE_RHEL_FEDORA_VERSION:-${latest}}"
+        flatpak_dir_shortname="installer/gnome_flatpaks"
+        flatpak_bootstrap_image="silverblue"
+        flatpak_bootstrap_version=${latest}
+        desktop="-gnome"
+        image_variant_suffix="-r10s"
+        ;;
 esac
 
-if [[ ${base_image_name} == "centos-stream-10" && ${target} != "bazzite" && ${target} != "bazzite-custom" ]]; then
-    echo "CentOS Stream 10 builds only support desktop targets."
+if [[ ( ${base_image_name} == "centos-stream-10" || ${base_image_name} == "rhel-10" ) && ${target} != "bazzite" && ${target} != "bazzite-custom" ]]; then
+    echo "${base_variant_name} builds only support desktop targets."
     exit 1
 fi
 
-if [[ ${image} == "gnome" || ${image} == "silverblue" || ${image} == "centos" || ${image} == "centos-stream-10" || ${image} == "c10s" ]]; then
+if [[ ${image} == "gnome" || ${image} == "silverblue" || ${image} == "centos" || ${image} == "centos-stream-10" || ${image} == "c10s" || ${image} == "rhel" || ${image} == "rhel-10" || ${image} == "r10s" ]]; then
     desktop="-gnome"
 fi
 image="${target}${desktop}"
@@ -88,4 +104,3 @@ if [[ ${image} =~ "nvidia" ]]; then
     image="bazzite${desktop}-nvidia"
 fi
 image="${image}${image_variant_suffix}"
-

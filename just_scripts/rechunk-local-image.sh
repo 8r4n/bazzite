@@ -19,8 +19,8 @@ image=${2:-centos}
 # shellcheck disable=SC1091
 . "${project_root}/just_scripts/get-defaults.sh"
 
-if [[ ${base_image_name} != "centos-stream-10" ]]; then
-    echo "Local rechunking is currently supported only for the CentOS Stream 10 image path." >&2
+if [[ ${base_image_name} != "centos-stream-10" && ${base_image_name} != "rhel-10" ]]; then
+    echo "Local rechunking is currently supported only for the CentOS Stream 10 and RHEL 10 image paths." >&2
     exit 1
 fi
 
