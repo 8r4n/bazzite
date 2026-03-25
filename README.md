@@ -157,14 +157,14 @@ Builds with the GNOME desktop environment are available in both desktop and deck
 - Numerous optional extensions pre-installed, including [important user experience fixes](https://www.youtube.com/watch?v=nbCg9_YgKgM).
 - Automatic updates for the [Firefox GNOME theme](https://github.com/rafaelmardojai/firefox-gnome-theme) and [Thunderbird GNOME theme](https://github.com/rafaelmardojai/thunderbird-gnome-theme). <sup><sub>(If installed)</sub></sup>
 
-For local development builds, this repo also supports a `centos` or `c10s` image input for a reduced GNOME workstation image on CentOS Stream 10.
+For local development builds, this repo also supports `centos`/`c10s` and `rhel`/`r10s` image inputs for reduced GNOME workstation images on CentOS Stream 10 and RHEL 10.
 
-This CentOS path is intentionally narrower than the Fedora GNOME image:
+These EL10 paths are intentionally narrower than the Fedora GNOME image:
 
 - Desktop targets only. Deck and NVIDIA targets are rejected.
 - No gaming stack. Steam, Lutris, Gamescope, MangoHud, vkBasalt, and related gaming-focused integrations are not included.
 - No NVIDIA-specific features or driver layering.
-- Reduced post-install customization. The CentOS variant skips Homebrew provisioning and the standard Bazzite per-user desktop setup service.
+- Reduced post-install customization. The CentOS and RHEL variants skip Homebrew provisioning and the standard Bazzite per-user desktop setup service.
 
 > [!IMPORTANT]
 > **ISOs can be downloaded from our [website](https://download.bazzite.gg), and a helpful install guide can be found [here](https://docs.bazzite.gg/General/Installation_Guide/).**
@@ -323,29 +323,29 @@ For the GNOME variant:
 rpm-ostree rebase ostree-unverified-registry:ghcr.io/<your-github-owner>/bazzite-custom-gnome:stable
 ```
 
-For the CentOS Stream 10 GNOME workstation variant, the compose flow has two parts:
+For the CentOS Stream 10 and RHEL 10 GNOME workstation variants, the compose flow has two parts:
 
-1. Build the local CentOS-based image with the `centos` image input.
+1. Build the local EL10-based image with the `centos` or `rhel` image input.
 2. Publish the resulting OCI image as the rpm-ostree rebase target from the `Build Bazzite` workflow.
 
-#### Building the CentOS Stream 10 image locally
+#### Building the EL10 image locally
 
-The `centos`, `centos-stream-10`, and `c10s` image inputs all switch the build to a reduced GNOME workstation compose. This path is intentionally narrower than the Fedora images:
+The `centos`, `centos-stream-10`, `c10s`, `rhel`, `rhel-10`, and `r10s` image inputs all switch the build to a reduced GNOME workstation compose. This path is intentionally narrower than the Fedora images:
 
 - Only `bazzite` and `bazzite-custom` targets are supported.
 - Deck and NVIDIA targets are rejected by `just_scripts/get-defaults.sh`.
 - The gaming stack, NVIDIA-specific layering, Homebrew provisioning, and the standard per-user Bazzite desktop setup are skipped.
 
-Point the build at either a downloaded CentOS installer ISO or an already extracted install tree. You can still set `BAZZITE_CENTOS_BASE_IMAGE` explicitly, but if you leave it unset the build will now bootstrap a local CentOS Stream 10 bootc base image from those ISO-backed repos first. The main compose then stages the same tree locally and runs a CentOS-only `dnf5 distro-sync` against it before producing the final OCI image, so the later `rechunk-local` OSTree artifact inherits the same package source.
+Both variants now use the same air-gapped build method: point the build at either a downloaded installer ISO or an already extracted install tree. You can still set the variant-specific `BAZZITE_*_BASE_IMAGE` explicitly, but if you leave it unset the build bootstraps a local bootc base image from those ISO-backed repos first. The main compose then stages the same tree locally and runs an EL10-only `dnf5 distro-sync` against it before producing the final OCI image, so the later `rechunk-local` OSTree artifact inherits the same package source.
 
-Using an ISO file directly:
+Using a CentOS ISO file directly:
 
 ```bash
 BAZZITE_CENTOS_INSTALL_ISO=/path/to/CentOS-Stream-10.iso \
 just build bazzite-custom centos
 ```
 
-Using a previously extracted install tree:
+Using a previously extracted CentOS install tree:
 
 ```bash
 BAZZITE_CENTOS_INSTALL_ROOT=/path/to/centos-install-root \
@@ -359,7 +359,28 @@ BAZZITE_CENTOS_INSTALL_ISO=/path/to/CentOS-Stream-10.iso \
 just build-centos-base
 ```
 
-The build script resolves the rest of the CentOS-specific defaults automatically:
+Using a RHEL ISO file directly:
+
+```bash
+BAZZITE_RHEL_INSTALL_ISO=/path/to/rhel-10.iso \
+just build bazzite-custom rhel
+```
+
+Using a previously extracted RHEL install tree:
+
+```bash
+BAZZITE_RHEL_INSTALL_ROOT=/path/to/rhel-install-root \
+just build bazzite-custom rhel
+```
+
+If you only want to prepare or refresh the local RHEL base image itself, run:
+
+```bash
+BAZZITE_RHEL_INSTALL_ISO=/path/to/rhel-10.iso \
+just build-rhel-base
+```
+
+The build scripts resolve the rest of the variant-specific defaults automatically:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -370,18 +391,28 @@ The build script resolves the rest of the CentOS-specific defaults automatically
 | `BAZZITE_CENTOS_SOURCE_IMAGE` | `centos-stream-10-main` | The source image flavor used for labels and image metadata. |
 | `BAZZITE_CENTOS_VERSION` | `10` | The CentOS build version used in the output tag. |
 | `BAZZITE_CENTOS_FEDORA_VERSION` | `43` | The Fedora content version used for shared package/version wiring in the compose. |
+| `BAZZITE_RHEL_BASE_IMAGE` | `localhost/bazzite-rhel-10-base:rhel10` when auto-bootstrapped | The RHEL 10 bootc/ostree base image passed to `Containerfile` as `BASE_IMAGE`. |
+| `BAZZITE_RHEL_INSTALL_ISO` | _required unless `BAZZITE_RHEL_INSTALL_ROOT` is set_ | Local RHEL installer ISO used to stage `BaseOS` and `AppStream` into the build context. |
+| `BAZZITE_RHEL_INSTALL_ROOT` | _required unless `BAZZITE_RHEL_INSTALL_ISO` is set_ | Path to an extracted RHEL install tree containing `BaseOS/repodata` and `AppStream/repodata`. |
+| `BAZZITE_RHEL_BASE_IMAGE_OUTPUT` | `localhost/bazzite-rhel-10-base:rhel10` | Override the tag used when `just build-rhel-base` or auto-bootstrap creates the local base image. |
+| `BAZZITE_RHEL_SOURCE_IMAGE` | `rhel-10-main` | The source image flavor used for labels and image metadata. |
+| `BAZZITE_RHEL_VERSION` | `10` | The RHEL build version used in the output tag. |
+| `BAZZITE_RHEL_FEDORA_VERSION` | `43` | The Fedora content version used for shared package/version wiring in the compose. |
 
 By default this creates a local image tagged like:
 
 ```text
 localhost/bazzite-custom-gnome-c10s-build:10-<your-branch>
+localhost/bazzite-custom-gnome-r10s-build:10-<your-branch>
 ```
 
 The build also records the ISO/tree identity in both the OCI labels and `/usr/share/ublue-os/image-info.json`, which makes it possible to verify which CentOS media produced the bootc base image, the OCI image, and the rechunked OSTree output.
 
-The bootstrap step uses host `dnf5` with privilege escalation through the existing `sudoif` helper, so the host needs `dnf5` available when you rely on auto-bootstrap or `just build-centos-base`.
+The RHEL path records the same source metadata for the matching RHEL ISO or install tree.
 
-If you want the upstream-flavored CentOS desktop image instead of the custom package set, replace `bazzite-custom` with `bazzite`.
+The bootstrap step uses host `dnf5` with privilege escalation through the existing `sudoif` helper, so the host needs `dnf5` available when you rely on auto-bootstrap or `just build-centos-base` / `just build-rhel-base`.
+
+If you want the upstream-flavored desktop image instead of the custom package set, replace `bazzite-custom` with `bazzite`.
 
 #### Creating the rpm-ostree archive
 
@@ -399,13 +430,13 @@ To create that archive in your fork:
 3. Push your changes to `testing` or `unstable`, or open `Actions -> Build Bazzite -> Run workflow` to publish on demand.
 4. Wait for the workflow to finish pushing the image tags to GHCR.
 
-For local iteration, this repository also includes a helper that mirrors the workflow's rechunk step against the already-built local CentOS image:
+For local iteration, this repository also includes a helper that mirrors the workflow's rechunk step against the already-built local EL10 image:
 
 ```bash
 just rechunk-local bazzite-custom centos
 ```
 
-By default this expects the matching local source image created by `just build`, for example `localhost/bazzite-custom-gnome-c10s-build:10-<your-branch>`, and writes the rechunked OCI archive under `just_scripts/output/rechunk/`. The helper uses rootless Podman with `podman unshare` for the source mount, `skopeo`, and the same `ghcr.io/ublue-os/legacy-rechunk:v1.0.0-x86_64` image referenced by the workflow.
+By default this expects the matching local source image created by `just build`, for example `localhost/bazzite-custom-gnome-c10s-build:10-<your-branch>` or `localhost/bazzite-custom-gnome-r10s-build:10-<your-branch>`, and writes the rechunked OCI archive under `just_scripts/output/rechunk/`. The helper uses rootless Podman with `podman unshare` for the source mount, `skopeo`, and the same `ghcr.io/ublue-os/legacy-rechunk:v1.0.0-x86_64` image referenced by the workflow.
 
 Useful overrides for local rechunking:
 
@@ -435,20 +466,21 @@ podman run --rm --pull=never \
 
 `bootc status` can also be run inside the imported image, but in a regular container it will report `booted`, `staged`, and `rollback` as `null` because the image is not running on a booted ostree host.
 
-After the workflow finishes, rebase a CentOS Stream 10 system to the published archive:
+After the workflow finishes, rebase a CentOS Stream 10 or RHEL 10 system to the published archive:
 
 ```bash
 rpm-ostree rebase ostree-unverified-registry:ghcr.io/<your-github-owner>/bazzite-custom-gnome-c10s:stable
 ```
 
-Example kickstarts for deploying that CentOS Stream 10 image are available at `installer/kickstarts/centos-stream-10.ks` for the ostree-container path and `installer/kickstarts/centos-stream-10-ostree.ks` for the plain OSTree repository path. Replace the `<your-github-owner>` placeholder in the container example before using it.
+Example kickstarts for deploying those EL10 images are available at `installer/kickstarts/centos-stream-10.ks` and `installer/kickstarts/rhel-10.ks` for the ostree-container path, plus `installer/kickstarts/centos-stream-10-ostree.ks` and `installer/kickstarts/rhel-10-ostree.ks` for the plain OSTree repository path. Replace the `<your-github-owner>` placeholder in the container examples before using them.
 
-This CentOS variant is a reduced desktop image. It does not publish deck, gaming, or NVIDIA-specific feature sets.
+These EL10 variants are reduced desktop images. They do not publish deck, gaming, or NVIDIA-specific feature sets.
 
-You can also verify the published image with your public cosign key. For the CentOS Stream 10 variant, use the `bazzite-custom-gnome-c10s` image name:
+You can also verify the published image with your public cosign key. For the CentOS Stream 10 variant, use the `bazzite-custom-gnome-c10s` image name, and for the RHEL 10 variant use `bazzite-custom-gnome-r10s`:
 
 ```bash
 cosign verify --key cosign.pub ghcr.io/<your-github-owner>/bazzite-custom-gnome-c10s:stable
+cosign verify --key cosign.pub ghcr.io/<your-github-owner>/bazzite-custom-gnome-r10s:stable
 ```
 
 ## Join The Community

@@ -43,7 +43,11 @@ build target="" image="":
 build-centos-base target="bazzite-custom" image="centos":
     @{{ project_root }}/just_scripts/build-centos-base-image.sh {{ target }} {{ image }}
 
-# Rechunk local CentOS image into an rpm-ostree-compatible OCI archive
+# Build the local RHEL 10 base image from ISO-backed repos.
+build-rhel-base target="bazzite-custom" image="rhel":
+    @{{ project_root }}/just_scripts/build-rhel-base-image.sh {{ target }} {{ image }}
+
+# Rechunk local CentOS Stream 10 or RHEL 10 image into an rpm-ostree-compatible OCI archive
 rechunk-local target="bazzite-custom" image="centos":
     @{{ project_root }}/just_scripts/rechunk-local-image.sh {{ target }} {{ image }}
 

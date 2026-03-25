@@ -49,6 +49,10 @@ ARG CENTOS_INSTALL_ROOT=""
 ARG CENTOS_INSTALL_SOURCE_KIND=""
 ARG CENTOS_INSTALL_SOURCE_ID=""
 ARG CENTOS_INSTALL_SOURCE_SHA256=""
+ARG RHEL_INSTALL_ROOT=""
+ARG RHEL_INSTALL_SOURCE_KIND=""
+ARG RHEL_INSTALL_SOURCE_ID=""
+ARG RHEL_INSTALL_SOURCE_SHA256=""
 
 FROM ${KERNEL_REF} AS kernel
 FROM ${NVIDIA_REF} AS nvidia
@@ -78,6 +82,10 @@ ARG CENTOS_INSTALL_ROOT
 ARG CENTOS_INSTALL_SOURCE_KIND
 ARG CENTOS_INSTALL_SOURCE_ID
 ARG CENTOS_INSTALL_SOURCE_SHA256
+ARG RHEL_INSTALL_ROOT
+ARG RHEL_INSTALL_SOURCE_KIND
+ARG RHEL_INSTALL_SOURCE_ID
+ARG RHEL_INSTALL_SOURCE_SHA256
 
 RUN --mount=type=bind,target=/tmp/context \
     cp -a /tmp/context/system_files/desktop/shared/. /tmp/context/system_files/desktop/${BASE_IMAGE_FAMILY}/. / && \
@@ -87,48 +95,83 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
     --mount=type=bind,target=/tmp/context \
     --mount=type=tmpfs,dst=/tmp \
-    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" ]]; then \
+    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" || "${BASE_IMAGE_NAME}" == "rhel-10" ]]; then \
         package_manager=$(command -v dnf5 || command -v dnf) && \
-        install_root="/tmp/context/${CENTOS_INSTALL_ROOT}" && \
-        [[ -n "${CENTOS_INSTALL_ROOT}" ]] && \
+        rpm_cmd=$(command -v rpm) && \
+        mkdir -p /etc/dnf/plugins /etc/yum/pluginconf.d && \
+        printf '%s\n' '[main]' 'enabled=0' > /etc/dnf/plugins/subscription-manager.conf && \
+        printf '%s\n' '[main]' 'enabled=0' > /etc/yum/pluginconf.d/subscription-manager.conf && \
+        rm -f /etc/yum.repos.d/redhat.repo && \
+        if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" ]]; then \
+            install_root="/tmp/context/${CENTOS_INSTALL_ROOT}" && \
+            repo_prefix="bazzite-centos" && \
+            repo_label="CentOS" \
+        ; else \
+            install_root="/tmp/context/${RHEL_INSTALL_ROOT}" && \
+            repo_prefix="bazzite-rhel" && \
+            repo_label="RHEL" \
+        ; fi && \
+        [[ -n "${install_root#/tmp/context/}" ]] && \
         [[ -n "${package_manager}" ]] && \
         [[ -d "${install_root}/BaseOS/repodata" ]] && \
         [[ -d "${install_root}/AppStream/repodata" ]] && \
         printf '%s\n' \
-            '[bazzite-centos-baseos]' \
-            'name=Bazzite CentOS BaseOS' \
+            "[${repo_prefix}-baseos]" \
+            "name=Bazzite ${repo_label} BaseOS" \
             "baseurl=file://${install_root}/BaseOS/" \
             'enabled=1' \
             'gpgcheck=0' \
             'repo_gpgcheck=0' \
             '' \
-            '[bazzite-centos-appstream]' \
-            'name=Bazzite CentOS AppStream' \
+            "[${repo_prefix}-appstream]" \
+            "name=Bazzite ${repo_label} AppStream" \
             "baseurl=file://${install_root}/AppStream/" \
             'enabled=1' \
             'gpgcheck=0' \
             'repo_gpgcheck=0' \
-            > /etc/yum.repos.d/bazzite-centos-install-root.repo && \
+            > /etc/yum.repos.d/${repo_prefix}-install-root.repo && \
         if [[ -d "${install_root}/CRB/repodata" ]]; then \
             printf '%s\n' \
                 '' \
-                '[bazzite-centos-crb]' \
-                'name=Bazzite CentOS CRB' \
+                "[${repo_prefix}-crb]" \
+                "name=Bazzite ${repo_label} CRB" \
                 "baseurl=file://${install_root}/CRB/" \
                 'enabled=1' \
                 'gpgcheck=0' \
                 'repo_gpgcheck=0' \
-                >> /etc/yum.repos.d/bazzite-centos-install-root.repo && \
+                >> /etc/yum.repos.d/${repo_prefix}-install-root.repo && \
             "${package_manager}" -y distro-sync --refresh --best --allowerasing --disablerepo='*' \
-                --enablerepo=bazzite-centos-baseos \
-                --enablerepo=bazzite-centos-appstream \
-                --enablerepo=bazzite-centos-crb \
+                --enablerepo="${repo_prefix}-baseos" \
+                --enablerepo="${repo_prefix}-appstream" \
+                --enablerepo="${repo_prefix}-crb" \
         ; else \
             "${package_manager}" -y distro-sync --refresh --best --allowerasing --disablerepo='*' \
-                --enablerepo=bazzite-centos-baseos \
-                --enablerepo=bazzite-centos-appstream \
+                --enablerepo="${repo_prefix}-baseos" \
+                --enablerepo="${repo_prefix}-appstream" \
         ; fi && \
-        rm -f /etc/yum.repos.d/bazzite-centos-install-root.repo && \
+        if [[ "${BASE_IMAGE_NAME}" == "rhel-10" ]]; then \
+            installed_rhsm_packages=() && \
+            for package_name in \
+                insights-client \
+                insights-core \
+                libdnf-plugin-subscription-manager \
+                python3-subscription-manager-rhsm \
+                rhc \
+                subscription-manager \
+                subscription-manager-cockpit \
+                subscription-manager-plugin-ostree \
+                subscription-manager-rhsm-certificates \
+            ; do \
+                if "${rpm_cmd}" -q "${package_name}" >/dev/null 2>&1; then \
+                    installed_rhsm_packages+=("${package_name}"); \
+                fi; \
+            done && \
+            if (( ${#installed_rhsm_packages[@]} > 0 )); then \
+                "${rpm_cmd}" -e "${installed_rhsm_packages[@]}"; \
+            fi && \
+            rm -f /etc/yum.repos.d/redhat.repo \
+        ; fi && \
+        rm -f /etc/yum.repos.d/${repo_prefix}-install-root.repo && \
         "${package_manager}" clean all \
     ; fi
 
@@ -136,11 +179,14 @@ COPY firmware /
 
 LABEL org.bazzite.centos-install-source-kind="${CENTOS_INSTALL_SOURCE_KIND}" \
     org.bazzite.centos-install-source-id="${CENTOS_INSTALL_SOURCE_ID}" \
-    org.bazzite.centos-install-source-sha256="${CENTOS_INSTALL_SOURCE_SHA256}"
+    org.bazzite.centos-install-source-sha256="${CENTOS_INSTALL_SOURCE_SHA256}" \
+    org.bazzite.rhel-install-source-kind="${RHEL_INSTALL_SOURCE_KIND}" \
+    org.bazzite.rhel-install-source-id="${RHEL_INSTALL_SOURCE_ID}" \
+    org.bazzite.rhel-install-source-sha256="${RHEL_INSTALL_SOURCE_SHA256}"
 
 # Copy Homebrew files from the brew image
 RUN --mount=type=bind,from=brew,source=/system_files,target=/tmp/brew_source \
-    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" ]]; then \
+    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" || "${BASE_IMAGE_NAME}" == "rhel-10" ]]; then \
         true \
     ; else \
         cp -a /tmp/brew_source/. / && \
@@ -152,7 +198,7 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
-    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" ]]; then \
+    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" || "${BASE_IMAGE_NAME}" == "rhel-10" ]]; then \
         true \
     ; else \
         mkdir -p /var/roothome && \
@@ -199,7 +245,7 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=bind,from=kernel,src=/,dst=/rpms/kernel \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
-    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" ]]; then \
+    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" || "${BASE_IMAGE_NAME}" == "rhel-10" ]]; then \
         true \
     ; else \
         /ctx/install-kernel && \
@@ -257,7 +303,7 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
-    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" ]]; then \
+    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" || "${BASE_IMAGE_NAME}" == "rhel-10" ]]; then \
         true \
     ; else \
         dnf5 -y install --enable-repo="linux-surface" --allowerasing \
@@ -320,7 +366,7 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
-    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" ]]; then \
+    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" || "${BASE_IMAGE_NAME}" == "rhel-10" ]]; then \
         true \
     ; else \
         dnf5 -y remove \
@@ -338,7 +384,7 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \ 
     --mount=type=secret,id=GITHUB_TOKEN \
-    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" ]]; then \
+    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" || "${BASE_IMAGE_NAME}" == "rhel-10" ]]; then \
         true \
     ; else \
         dnf5 -y install \
@@ -464,7 +510,7 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     --mount=type=secret,id=GITHUB_TOKEN \
-    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" ]]; then \
+    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" || "${BASE_IMAGE_NAME}" == "rhel-10" ]]; then \
         true \
     ; else \
         dnf5 --enable-repo=terra-mesa -y install \
@@ -508,7 +554,7 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     --mount=type=secret,id=GITHUB_TOKEN \
-    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" ]]; then \
+    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" || "${BASE_IMAGE_NAME}" == "rhel-10" ]]; then \
         true \
     ; else \
         /ctx/ghcurl "$(/ctx/ghcurl "https://api.github.com/repos/ublue-os/bazzite-ujust-picker/releases/latest" -s | jq -r '.assets[] | select(.name | test("x86_64$")) | .browser_download_url')" -sL -o /usr/bin/ujust-picker && \
@@ -523,7 +569,7 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     --mount=type=secret,id=GITHUB_TOKEN \
-    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" ]]; then \
+    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" || "${BASE_IMAGE_NAME}" == "rhel-10" ]]; then \
         true; \
     elif grep -q "kinoite" <<< "${BASE_IMAGE_NAME}"; then \
         dnf5 -y install \
@@ -617,7 +663,7 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
-    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" ]]; then \
+    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" || "${BASE_IMAGE_NAME}" == "rhel-10" ]]; then \
         true \
     ; else \
         dnf5 install -y --enable-repo=copr:copr.fedorainfracloud.org:ublue-os:packages \
@@ -634,7 +680,7 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     --mount=type=secret,id=GITHUB_TOKEN \
-    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" ]]; then \
+    if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" || "${BASE_IMAGE_NAME}" == "rhel-10" ]]; then \
         rm -f /etc/profile.d/toolbox.sh && \
         mkdir -p /var/tmp && chmod 1777 /var/tmp && \
         mkdir -p /sysroot/ostree && \

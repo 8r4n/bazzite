@@ -41,6 +41,15 @@ orig_image=$2
 
 # Set Container tag name
 tag=$(just _tag "${image}")
+builder_image=ghcr.io/jasonn3/build-container-installer:latest
+flatpak_deps_file=${project_root}/${flatpak_dir_shortname}/flatpaks_with_deps
+
+if [[ ${base_image_name} == "rhel-10" ]]; then
+    if ! "${container_mgr}" image exists "${builder_image}" >/dev/null 2>&1; then
+        echo "Offline RHEL ISO builds require a local ${builder_image} image. Refusing to pull it from the network." >&2
+        exit 1
+    fi
+fi
 
 # Remove old ISO if present
 sudoif rm -f "${project_root}/just_scripts/output/${tag}-${git_branch}.iso"
@@ -82,8 +91,11 @@ if [[ -f /.dockerenv || -f /run/.containerenv ]]; then
 fi
 
 # Generate Flatpak Dependency List
-if [[ ! -f ${project_root}/${flatpak_dir_shortname}/flatpaks_with_deps ]]; then
-    "${container_mgr}" run --rm --privileged \
+if [[ ${base_image_name} == "rhel-10" && ! -f ${flatpak_deps_file} ]]; then
+    mkdir -p "$(dirname "${flatpak_deps_file}")"
+    : > "${flatpak_deps_file}"
+elif [[ ! -f ${project_root}/${flatpak_dir_shortname}/flatpaks_with_deps ]]; then
+    "${container_mgr}" run --pull=never --rm --privileged \
         --entrypoint bash \
         -e FLATPAK_SYSTEM_DIR=/flatpak/flatpak \
         -e FLATPAK_TRIGGERSDIR=/flatpak/triggers \
@@ -106,12 +118,14 @@ fi
 
 # Make ISO
 ${container_mgr} run --rm --privileged  \
+    --pull=never \
     --volume "${api_socket}":/var/run/docker.sock \
     --volume "${workspace}"/just_scripts/build-iso-makefile-patch:/build-container-installer/container/Makefile \
     --volume "${workspace}/${flatpak_dir_shortname}":"/build-container-installer/${flatpak_dir_shortname}" \
     --volume "${workspace}"/just_scripts/output:/build-container-installer/build  \
     --volume "${workspace}"/installer/lorax_templates:/additional_lorax_templates \
-    ghcr.io/jasonn3/build-container-installer:latest \
+    --volume "${workspace}"/secure_boot.der:/build-container-installer/secure_boot.der \
+    ${builder_image} \
     ADDITIONAL_TEMPLATES="/additional_lorax_templates/remove_root_password_prompt.tmpl" \
     ARCH="x86_64" \
     ENABLE_CACHE_DNF="false" \
@@ -124,6 +138,6 @@ ${container_mgr} run --rm --privileged  \
     IMAGE_REPO="localhost" \
     IMAGE_TAG="${build_version}-${git_branch}" \
     ISO_NAME="build/${tag}-${git_branch}.iso" \
-    SECURE_BOOT_KEY_URL='https://github.com/ublue-os/bazzite/raw/main/secure_boot.der' \
+    SECURE_BOOT_KEY_URL='file:///build-container-installer/secure_boot.der' \
     VARIANT="${base_variant_name}" \
     VERSION="${build_version}"

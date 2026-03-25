@@ -1,6 +1,7 @@
 just_scripts/output/rechunk/
 just_scripts/output/airgap/
 just_scripts/output/centos-install-root/
+just_scripts/output/rhel-install-root/
 installer/pxe-boot/httpd/content/ostree/repo/
 installer/pxe-boot/registry/data/
 installer/pxe-boot/httpd/

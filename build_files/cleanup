@@ -13,7 +13,7 @@ rm -rf /var/log/dnf.log || true
 rm -rf /boot/* || true
 rm -rf /boot/.* || true
 
-if [[ "${BASE_IMAGE_NAME:-}" == "centos-stream-10" ]]; then
+if [[ "${BASE_IMAGE_NAME:-}" == "centos-stream-10" || "${BASE_IMAGE_NAME:-}" == "rhel-10" ]]; then
 	exit 0
 fi
 
