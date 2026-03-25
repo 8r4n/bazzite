@@ -97,6 +97,11 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=tmpfs,dst=/tmp \
     if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" || "${BASE_IMAGE_NAME}" == "rhel-10" ]]; then \
         package_manager=$(command -v dnf5 || command -v dnf) && \
+        rpm_cmd=$(command -v rpm) && \
+        mkdir -p /etc/dnf/plugins /etc/yum/pluginconf.d && \
+        printf '%s\n' '[main]' 'enabled=0' > /etc/dnf/plugins/subscription-manager.conf && \
+        printf '%s\n' '[main]' 'enabled=0' > /etc/yum/pluginconf.d/subscription-manager.conf && \
+        rm -f /etc/yum.repos.d/redhat.repo && \
         if [[ "${BASE_IMAGE_NAME}" == "centos-stream-10" ]]; then \
             install_root="/tmp/context/${CENTOS_INSTALL_ROOT}" && \
             repo_prefix="bazzite-centos" && \
@@ -143,6 +148,28 @@ RUN --mount=type=cache,dst=/var/cache \
             "${package_manager}" -y distro-sync --refresh --best --allowerasing --disablerepo='*' \
                 --enablerepo="${repo_prefix}-baseos" \
                 --enablerepo="${repo_prefix}-appstream" \
+        ; fi && \
+        if [[ "${BASE_IMAGE_NAME}" == "rhel-10" ]]; then \
+            installed_rhsm_packages=() && \
+            for package_name in \
+                insights-client \
+                insights-core \
+                libdnf-plugin-subscription-manager \
+                python3-subscription-manager-rhsm \
+                rhc \
+                subscription-manager \
+                subscription-manager-cockpit \
+                subscription-manager-plugin-ostree \
+                subscription-manager-rhsm-certificates \
+            ; do \
+                if "${rpm_cmd}" -q "${package_name}" >/dev/null 2>&1; then \
+                    installed_rhsm_packages+=("${package_name}"); \
+                fi; \
+            done && \
+            if (( ${#installed_rhsm_packages[@]} > 0 )); then \
+                "${rpm_cmd}" -e "${installed_rhsm_packages[@]}"; \
+            fi && \
+            rm -f /etc/yum.repos.d/redhat.repo \
         ; fi && \
         rm -f /etc/yum.repos.d/${repo_prefix}-install-root.repo && \
         "${package_manager}" clean all \

@@ -236,3 +236,8 @@ else
         "${build_args[@]}" \
         "${project_root}"
 fi
+
+if [[ ${base_image_name} == "rhel-10" ]]; then
+    "${project_root}/just_scripts/sanitize-rhel-offline-image.sh" "localhost/${tag}:${build_version}-${git_branch_tag}" "${container_mgr}"
+    "${project_root}/just_scripts/check-rhel-offline-image.sh" "localhost/${tag}:${build_version}-${git_branch_tag}" "${container_mgr}"
+fi

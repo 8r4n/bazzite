@@ -33,6 +33,17 @@ require_command() {
     command -v "${cmd}" >/dev/null 2>&1 || die "Missing required command: ${cmd}"
 }
 
+rootfs_rpm_query() {
+    local root_dir=$1
+    local package_name=$2
+
+    if command -v sudo >/dev/null 2>&1 && /usr/bin/sudo -n true >/dev/null 2>&1; then
+        /usr/bin/sudo rpm --root "${root_dir}" -q "${package_name}" >/dev/null 2>&1
+    else
+        rpm --root "${root_dir}" -q "${package_name}" >/dev/null 2>&1
+    fi
+}
+
 hash_install_root() {
     local install_root=$1
 
@@ -51,11 +62,32 @@ validate_install_root() {
     done
 }
 
+validate_rootfs_offline_state() {
+    local rootfs_dir=$1
+    local package_name
+
+    [[ ! -f "${rootfs_dir}/etc/yum.repos.d/redhat.repo" ]] || die "Offline RHEL rootfs still contains etc/yum.repos.d/redhat.repo"
+
+    for conf_path in \
+        "${rootfs_dir}/etc/dnf/plugins/subscription-manager.conf" \
+        "${rootfs_dir}/etc/yum/pluginconf.d/subscription-manager.conf"; do
+        [[ -f "${conf_path}" ]] || die "Offline RHEL rootfs is missing ${conf_path#${rootfs_dir}/}"
+        grep -qx 'enabled=0' "${conf_path}" || die "Offline RHEL rootfs has subscription-manager enabled in ${conf_path#${rootfs_dir}/}"
+    done
+
+    for package_name in "${rhsm_packages[@]}"; do
+        if rootfs_rpm_query "${rootfs_dir}" "${package_name}"; then
+            die "Offline RHEL rootfs still contains RHSM-managed package: ${package_name}"
+        fi
+    done
+}
+
 if [[ ${base_image_name} != "rhel-10" ]]; then
     die "This helper only supports RHEL 10 builds."
 fi
 
 require_command dnf5
+require_command rpm
 require_command sha256sum
 require_command tar
 require_command rsync
@@ -102,7 +134,7 @@ fi
 validate_install_root "${staged_install_root}"
 
 workdir=$(mktemp -d "${TMPDIR:-/tmp}/bazzite-rhel-base.XXXXXX")
-trap 'sudoif rm -rf "${workdir}"' EXIT
+trap 'sudoif rm -rf "${workdir}" || true' EXIT
 
 reposdir="${workdir}/repos.d"
 rootfs="${workdir}/rootfs"
@@ -150,11 +182,6 @@ package_args=(
     bootc
     dnf-bootc
     rpm-ostree
-    kernel
-    kernel-core
-    kernel-modules
-    dracut
-    dracut-network
     NetworkManager
     podman
     skopeo
@@ -168,6 +195,26 @@ package_args=(
     shim-x64
 )
 
+kernel_package_args=(
+    kernel
+    kernel-core
+    kernel-modules
+    dracut
+    dracut-network
+)
+
+rhsm_packages=(
+    insights-client
+    insights-core
+    libdnf-plugin-subscription-manager
+    python3-subscription-manager-rhsm
+    rhc
+    subscription-manager
+    subscription-manager-cockpit
+    subscription-manager-plugin-ostree
+    subscription-manager-rhsm-certificates
+)
+
 log "Installing RHEL base filesystem from local ISO-backed repos"
 sudoif dnf5 -y \
     --installroot "${rootfs}" \
@@ -179,6 +226,80 @@ sudoif dnf5 -y \
     --nogpgcheck \
     "${repo_args[@]}" \
     install "${package_args[@]}" >&2
+
+kernel_install_dir="${rootfs}/usr/lib/kernel/install.d"
+kernel_install_shims=(05-rpmostree.install 20-grub.install 50-dracut.install 51-dracut-rescue.install)
+
+if [[ -d ${kernel_install_dir} ]]; then
+    log "Temporarily disabling kernel-install hooks inside the RHEL base rootfs"
+    for shim_name in "${kernel_install_shims[@]}"; do
+        shim_path="${kernel_install_dir}/${shim_name}"
+        backup_path="${shim_path}.bazzite-offline.bak"
+
+        if [[ -f ${shim_path} ]]; then
+            sudoif mv "${shim_path}" "${backup_path}"
+        fi
+
+        printf '%s\n' '#!/bin/sh' 'exit 0' | sudoif tee "${shim_path}" >/dev/null
+        sudoif chmod +x "${shim_path}"
+    done
+fi
+
+log "Installing kernel packages into the RHEL base filesystem"
+sudoif dnf5 -y \
+    --installroot "${rootfs}" \
+    --releasever "${build_version}" \
+    --setopt=install_weak_deps=False \
+    --setopt=reposdir="${reposdir}" \
+    --setopt=cachedir="${workdir}/dnf-cache" \
+    --disablerepo='*' \
+    --nogpgcheck \
+    "${repo_args[@]}" \
+    install "${kernel_package_args[@]}" >&2
+
+if [[ -d ${kernel_install_dir} ]]; then
+    log "Restoring kernel-install hooks inside the RHEL base rootfs"
+    for shim_name in "${kernel_install_shims[@]}"; do
+        shim_path="${kernel_install_dir}/${shim_name}"
+        backup_path="${shim_path}.bazzite-offline.bak"
+
+        if [[ -f ${backup_path} ]]; then
+            sudoif mv -f "${backup_path}" "${shim_path}" || true
+        else
+            sudoif rm -f "${shim_path}" || true
+        fi
+    done
+fi
+
+log "Scanning the RHEL base rootfs for RHSM-managed packages"
+installed_rhsm_packages=()
+for package_name in "${rhsm_packages[@]}"; do
+    if rootfs_rpm_query "${rootfs}" "${package_name}"; then
+        installed_rhsm_packages+=("${package_name}")
+    fi
+done
+
+if (( ${#installed_rhsm_packages[@]} > 0 )); then
+    log "Removing RHSM-managed packages from the local RHEL base image"
+    sudoif dnf5 -y \
+        --installroot "${rootfs}" \
+        --releasever "${build_version}" \
+        --setopt=reposdir="${reposdir}" \
+        --setopt=cachedir="${workdir}/dnf-cache" \
+        --disablerepo='*' \
+        --nogpgcheck \
+        "${repo_args[@]}" \
+        remove "${installed_rhsm_packages[@]}" >&2
+fi
+
+    log "Rewriting repo and plugin state for offline RHEL base image"
+sudoif rm -f "${rootfs}/etc/yum.repos.d/redhat.repo"
+sudoif mkdir -p "${rootfs}/etc/dnf/plugins" "${rootfs}/etc/yum/pluginconf.d"
+printf '[main]\nenabled=0\n' | sudoif tee "${rootfs}/etc/dnf/plugins/subscription-manager.conf" >/dev/null
+printf '[main]\nenabled=0\n' | sudoif tee "${rootfs}/etc/yum/pluginconf.d/subscription-manager.conf" >/dev/null
+
+    log "Validating offline RHEL rootfs state"
+validate_rootfs_offline_state "${rootfs}"
 
 sudoif dnf5 -y \
     --installroot "${rootfs}" \
@@ -213,5 +334,11 @@ log "Building local base image ${base_image_ref}"
     -t "${base_image_ref}" \
     -t "${versioned_base_ref}" \
     "${context_dir}" >&2
+
+log "Sanitizing local base image ${base_image_ref}"
+"${project_root}/just_scripts/sanitize-rhel-offline-image.sh" "${base_image_ref}" "${container_mgr}"
+log "Validating local base image ${base_image_ref}"
+"${project_root}/just_scripts/check-rhel-offline-image.sh" "${base_image_ref}" "${container_mgr}"
+"${container_mgr}" tag "${base_image_ref}" "${versioned_base_ref}"
 
 printf '%s\n' "${base_image_ref}"

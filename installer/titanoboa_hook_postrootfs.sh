@@ -4,26 +4,60 @@ set -exo pipefail
 
 source /etc/os-release
 
+dnf_repo_args=()
+offline_mode=${BAZZITE_OFFLINE_INSTALL_MODE:-false}
+offline_skip_flatpaks=${BAZZITE_OFFLINE_SKIP_FLATPAKS:-false}
+
+if [[ ${offline_mode} == true && -n ${BAZZITE_OFFLINE_DNF_REPO_IDS:-} ]]; then
+    dnf_repo_args=(--disablerepo='*')
+    IFS=',' read -r -a repo_ids <<<"${BAZZITE_OFFLINE_DNF_REPO_IDS}"
+    for repo_id in "${repo_ids[@]}"; do
+        dnf_repo_args+=(--enablerepo="${repo_id}")
+    done
+fi
+
+dnf_install() {
+    dnf "${dnf_repo_args[@]}" -qy "$@"
+}
+
+dnf_reinstall_or_install() {
+    local package_name=$1
+    dnf "${dnf_repo_args[@]}" -yq reinstall --allowerasing "${package_name}" || \
+        dnf "${dnf_repo_args[@]}" -yq install --allowerasing "${package_name}"
+}
+
 # Remove all versionlocks, in order to avoid dependency issues
 dnf -qy versionlock clear
 
 # Install Anaconda
-dnf install -qy --enable-repo=fedora-cisco-openh264 --allowerasing firefox anaconda-live libblockdev-{btrfs,lvm,dm}
+if [[ ${offline_mode} == true ]]; then
+    dnf_install install --allowerasing anaconda-live libblockdev-{btrfs,lvm,dm}
+    dnf_install install --allowerasing firefox || :
+else
+    dnf install -qy --enable-repo=fedora-cisco-openh264 --allowerasing firefox anaconda-live libblockdev-{btrfs,lvm,dm}
+fi
 
 mkdir -p /var/lib/rpm-state # Needed for Anaconda Web UI
 
 # Utilities for displaying a dialog prompting users to review secure boot documentation
-dnf install -qy --setopt=install_weak_deps=0 qrencode yad
+if [[ ${offline_mode} == true ]]; then
+    dnf_install install --setopt=install_weak_deps=0 qrencode yad || :
+else
+    dnf install -qy --setopt=install_weak_deps=0 qrencode yad
+fi
 
 # Install conky to display hardware information on the desktop
-dnf install -qy --setopt=install_weak_deps=0 conky
+if [[ ${offline_mode} == true ]]; then
+    dnf_install install --setopt=install_weak_deps=0 conky || :
+else
+    dnf install -qy --setopt=install_weak_deps=0 conky
+fi
 
 # Variables
 imageref="$(podman images --format '{{ index .Names 0 }}\n' 'bazzite*' | head -1)"
 imageref="${imageref##*://}"
 imageref="${imageref%%:*}"
 imagetag="$(podman images --format '{{ .Tag }}\n' "$imageref" | head -1)"
-sbkey='https://github.com/ublue-os/akmods/raw/main/certs/public_key.der'
 SECUREBOOT_KEY="/usr/share/ublue-os/sb_pubkey.der"
 SECUREBOOT_DOC_URL="https://docs.bazzite.gg/sb"
 SECUREBOOT_DOC_URL_QR="/usr/share/ublue-os/secure_boot_qr.png"
@@ -34,17 +68,16 @@ SECUREBOOT_DOC_URL_QR="/usr/share/ublue-os/secure_boot_qr.png"
 echo "Bazzite release $VERSION_ID ($VERSION_CODENAME)" >/etc/system-release
 
 # Get Artwork
-git clone --depth 1 --quiet https://github.com/ublue-os/bazzite.git /root/packages
 case "${PRETTY_NAME,,}" in
 "bazzite"*)
     mkdir -p /usr/share/anaconda/pixmaps/silverblue
-    cp -r /root/packages/installer/branding/* /usr/share/anaconda/pixmaps/
+    cp -r /src/installer/branding/* /usr/share/anaconda/pixmaps/
     ;;
 esac
 
 # Installer icon
-_icon=/root/packages/installer/branding/bazzite-installer.svg
-_icon_symbol=/root/packages/installer/branding/bazzite-installer-symbolic.svg
+_icon=/src/installer/branding/bazzite-installer.svg
+_icon_symbol=/src/installer/branding/bazzite-installer-symbolic.svg
 if [[ -f $_icon ]]; then
     for f in \
         /usr/share/icons/hicolor/48x48/apps/org.fedoraproject.AnacondaInstaller.svg \
@@ -55,11 +88,14 @@ if [[ -f $_icon ]]; then
 fi
 unset -v _icon
 unset -v _icon_symbol
-rm -rf /root/packages
 
 # Secureboot Key Fetch
 mkdir -p /usr/share/ublue-os
-curl -Lo /usr/share/ublue-os/sb_pubkey.der "$sbkey"
+if [[ -f /src/secure_boot.der ]]; then
+    cp /src/secure_boot.der /usr/share/ublue-os/sb_pubkey.der
+elif [[ ${offline_mode} != true ]]; then
+    curl -Lo /usr/share/ublue-os/sb_pubkey.der https://github.com/ublue-os/akmods/raw/main/certs/public_key.der
+fi
 
 # Default Kickstart
 cat <<EOF >>/usr/share/anaconda/interactive-defaults.ks
@@ -144,9 +180,15 @@ EOCAT
 
 ostreecontainer --url=$imageref:$imagetag --transport=containers-storage --no-signature-verification
 %include /usr/share/anaconda/post-scripts/install-configure-upgrade.ks
+$(
+    if [[ ${offline_skip_flatpaks} != true ]]; then
+        cat <<'EOCAT'
 %include /usr/share/anaconda/post-scripts/disable-fedora-flatpak.ks
 %include /usr/share/anaconda/post-scripts/install-flatpaks.ks
 %include /usr/share/anaconda/post-scripts/flatpak-restore-selinux-labels.ks
+EOCAT
+    fi
+)
 %include /usr/share/anaconda/post-scripts/secureboot-enroll-key.ks
 %include /usr/share/anaconda/post-scripts/secureboot-docs.ks
 
@@ -255,8 +297,7 @@ fi
 # Reenable noveau.
 if [[ $imageref == *-nvidia* ]]; then
     for pkg in nvidia-gpu-firmware mesa-vulkan-drivers; do
-        dnf -yq reinstall --allowerasing $pkg ||
-            dnf -yq install --allowerasing $pkg
+        dnf_reinstall_or_install "$pkg"
     done
     # Ensure noveau vulkan icds exist
     (
@@ -289,9 +330,13 @@ rm -vf /etc/skel/.config/autostart/steam*.desktop
 dnf -yq remove steam lutris bazaar || :
 
 (
-    wallpaper_url=https://github.com/ublue-os/bazzite/raw/refs/heads/main/press_kit/art/Convergence_Wallpaper_DX.jxl
     wallpaper_file=/usr/share/wallpapers/convergence.jxl
-    wget -nv -O "$wallpaper_file" "$wallpaper_url"
+    if [[ -f /src/press_kit/art/Convergence_Wallpaper_DX.jxl ]]; then
+        cp /src/press_kit/art/Convergence_Wallpaper_DX.jxl "$wallpaper_file"
+    elif [[ ${offline_mode} != true ]]; then
+        wallpaper_url=https://github.com/ublue-os/bazzite/raw/refs/heads/main/press_kit/art/Convergence_Wallpaper_DX.jxl
+        wget -nv -O "$wallpaper_file" "$wallpaper_url"
+    fi
     rm -f /usr/share/backgrounds/default.xml
 )
 
@@ -330,6 +375,10 @@ if [[ $desktop_env == gnome ]]; then
 fi
 
 # Install Gparted
-dnf -yq install gparted
+if [[ ${offline_mode} == true ]]; then
+    dnf_install install gparted || :
+else
+    dnf -yq install gparted
+fi
 
 ###############################

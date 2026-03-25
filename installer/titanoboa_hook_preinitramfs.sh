@@ -2,6 +2,19 @@
 #
 set -exo pipefail
 
+dnf_repo_args=()
+if [[ ${BAZZITE_OFFLINE_INSTALL_MODE:-false} == true && -n ${BAZZITE_OFFLINE_DNF_REPO_IDS:-} ]]; then
+    dnf_repo_args=(--disablerepo='*')
+    IFS=',' read -r -a repo_ids <<<"${BAZZITE_OFFLINE_DNF_REPO_IDS}"
+    for repo_id in "${repo_ids[@]}"; do
+        dnf_repo_args+=(--enablerepo="${repo_id}")
+    done
+fi
+
+dnf_install() {
+    dnf "${dnf_repo_args[@]}" -y "$@"
+}
+
 # Swap kernel with vanilla and rebuild initramfs.
 #
 # This is done because we want the initramfs to use a signed
@@ -18,7 +31,7 @@ kernel_pkgs=(
 dnf -y versionlock delete "${kernel_pkgs[@]}"
 dnf --setopt=protect_running_kernel=False -y remove "${kernel_pkgs[@]}"
 (cd /usr/lib/modules && rm -rf -- ./*)
-dnf -y --repo fedora,updates --setopt=tsflags=noscripts install kernel kernel-core
+dnf_install --setopt=tsflags=noscripts install kernel kernel-core
 kernel=$(find /usr/lib/modules -maxdepth 1 -type d -printf '%P\n' | grep .)
 depmod "$kernel"
 
@@ -27,5 +40,5 @@ imageref="${imageref##*://}"
 imageref="${imageref%%:*}"
 
 # Include nvidia-gpu-firmware package.
-dnf install -yq nvidia-gpu-firmware || :
+dnf_install -q install nvidia-gpu-firmware || :
 dnf clean all -yq
