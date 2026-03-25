@@ -1,0 +1,28 @@
+{
+  "features": {
+    "common": {
+      "description": "Core packages and configuration shared by desktop-class images."
+    },
+    "gaming": {
+      "description": "Gaming stack packages and supporting integrations."
+    },
+    "kde": {
+      "description": "KDE-specific desktop packages and defaults."
+    },
+    "gnome": {
+      "description": "GNOME-specific desktop packages and defaults."
+    },
+    "deck": {
+      "description": "Steam Deck and gaming-mode integrations layered on top of the desktop image."
+    },
+    "nvidia": {
+      "description": "NVIDIA driver stack and related image adjustments."
+    },
+    "custom": {
+      "description": "Extra utilities that are only installed for custom variants."
+    },
+    "el10-minimal": {
+      "description": "Reduced feature set used by CentOS Stream 10 and RHEL 10 desktop builds."
+    }
+  }
+}

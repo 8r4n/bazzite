@@ -37,6 +37,8 @@ ARG KERNEL_REF="${KERNEL_REF:-ghcr.io/bazzite-org/kernel-bazzite:latest-f${FEDOR
 ARG NVIDIA_REF="${NVIDIA_REF:-ghcr.io/bazzite-org/nvidia-drivers:latest-f${FEDORA_VERSION}-${ARCH}}"
 ARG BREW_IMAGE="${BREW_IMAGE:-ghcr.io/ublue-os/brew:latest@sha256:ca91068f51ce663d495ccfc829352d6621ec95f6c7db447ade55023b222f9762}"
 ARG IMAGE_NAME="bazzite"
+ARG VARIANT_ID="bazzite"
+ARG VARIANT_FEATURES="common gaming kde"
 ARG IMAGE_VENDOR="ublue-os"
 ARG IMAGE_BRANCH="stable"
 ARG SHA_HEAD_SHORT=""
@@ -68,6 +70,8 @@ COPY build_files /
 FROM ${BASE_IMAGE} AS bazzite
 
 ARG IMAGE_NAME
+ARG VARIANT_ID
+ARG VARIANT_FEATURES
 ARG IMAGE_VENDOR
 ARG IMAGE_BRANCH
 ARG BASE_IMAGE_NAME
@@ -182,7 +186,9 @@ LABEL org.bazzite.centos-install-source-kind="${CENTOS_INSTALL_SOURCE_KIND}" \
     org.bazzite.centos-install-source-sha256="${CENTOS_INSTALL_SOURCE_SHA256}" \
     org.bazzite.rhel-install-source-kind="${RHEL_INSTALL_SOURCE_KIND}" \
     org.bazzite.rhel-install-source-id="${RHEL_INSTALL_SOURCE_ID}" \
-    org.bazzite.rhel-install-source-sha256="${RHEL_INSTALL_SOURCE_SHA256}"
+    org.bazzite.rhel-install-source-sha256="${RHEL_INSTALL_SOURCE_SHA256}" \
+    org.bazzite.variant-id="${VARIANT_ID}" \
+    org.bazzite.variant-features="${VARIANT_FEATURES}"
 
 # Copy Homebrew files from the brew image
 RUN --mount=type=bind,from=brew,source=/system_files,target=/tmp/brew_source \

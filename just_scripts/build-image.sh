@@ -189,6 +189,8 @@ fi
 build_args=(
     -f Containerfile
     --build-arg="IMAGE_NAME=${tag}"
+    --build-arg="VARIANT_ID=${variant_id}"
+    --build-arg="VARIANT_FEATURES=${variant_features}"
     --build-arg="IMAGE_VENDOR=ublue-os"
     --build-arg="IMAGE_BRANCH=${git_branch_tag}"
     --build-arg="BASE_IMAGE_NAME=${base_image_name}"
