@@ -1,0 +1,205 @@
+{
+  "defaults": {
+    "latest": "43",
+    "defaultImage": "kinoite",
+    "defaultTarget": "bazzite"
+  },
+  "imageInputs": {
+    "kinoite": {
+      "baseImageName": "kinoite",
+      "baseImageFamily": "kinoite",
+      "baseVariantName": "Kinoite",
+      "sourceImage": "kinoite-main",
+      "flatpakDirShortname": "installer/kde_flatpaks",
+      "flatpakBootstrapImage": "kinoite",
+      "desktopSuffix": "",
+      "buildVersion": "43",
+      "contentVersion": "43",
+      "imageVariantSuffix": "",
+      "features": [
+        "kde"
+      ]
+    },
+    "kde": {
+      "baseImageName": "kinoite",
+      "baseImageFamily": "kinoite",
+      "baseVariantName": "Kinoite",
+      "sourceImage": "kinoite-main",
+      "flatpakDirShortname": "installer/kde_flatpaks",
+      "flatpakBootstrapImage": "kinoite",
+      "desktopSuffix": "",
+      "buildVersion": "43",
+      "contentVersion": "43",
+      "imageVariantSuffix": "",
+      "features": [
+        "kde"
+      ]
+    },
+    "silverblue": {
+      "baseImageName": "silverblue",
+      "baseImageFamily": "silverblue",
+      "baseVariantName": "Silverblue",
+      "sourceImage": "silverblue-main",
+      "flatpakDirShortname": "installer/gnome_flatpaks",
+      "flatpakBootstrapImage": "silverblue",
+      "desktopSuffix": "-gnome",
+      "buildVersion": "43",
+      "contentVersion": "43",
+      "imageVariantSuffix": "",
+      "features": [
+        "gnome"
+      ]
+    },
+    "gnome": {
+      "baseImageName": "silverblue",
+      "baseImageFamily": "silverblue",
+      "baseVariantName": "Silverblue",
+      "sourceImage": "silverblue-main",
+      "flatpakDirShortname": "installer/gnome_flatpaks",
+      "flatpakBootstrapImage": "silverblue",
+      "desktopSuffix": "-gnome",
+      "buildVersion": "43",
+      "contentVersion": "43",
+      "imageVariantSuffix": "",
+      "features": [
+        "gnome"
+      ]
+    },
+    "centos": {
+      "baseImageName": "centos-stream-10",
+      "baseImageFamily": "silverblue",
+      "baseVariantName": "CentOS Stream 10",
+      "sourceImage": "${BAZZITE_CENTOS_SOURCE_IMAGE:-centos-stream-10-main}",
+      "flatpakDirShortname": "installer/gnome_flatpaks",
+      "flatpakBootstrapImage": "silverblue",
+      "desktopSuffix": "-gnome",
+      "buildVersion": "${BAZZITE_CENTOS_VERSION:-10}",
+      "contentVersion": "${BAZZITE_CENTOS_FEDORA_VERSION:-43}",
+      "imageVariantSuffix": "-c10s",
+      "features": [
+        "gnome",
+        "el10-minimal"
+      ]
+    },
+    "centos-stream-10": {
+      "baseImageName": "centos-stream-10",
+      "baseImageFamily": "silverblue",
+      "baseVariantName": "CentOS Stream 10",
+      "sourceImage": "${BAZZITE_CENTOS_SOURCE_IMAGE:-centos-stream-10-main}",
+      "flatpakDirShortname": "installer/gnome_flatpaks",
+      "flatpakBootstrapImage": "silverblue",
+      "desktopSuffix": "-gnome",
+      "buildVersion": "${BAZZITE_CENTOS_VERSION:-10}",
+      "contentVersion": "${BAZZITE_CENTOS_FEDORA_VERSION:-43}",
+      "imageVariantSuffix": "-c10s",
+      "features": [
+        "gnome",
+        "el10-minimal"
+      ]
+    },
+    "c10s": {
+      "baseImageName": "centos-stream-10",
+      "baseImageFamily": "silverblue",
+      "baseVariantName": "CentOS Stream 10",
+      "sourceImage": "${BAZZITE_CENTOS_SOURCE_IMAGE:-centos-stream-10-main}",
+      "flatpakDirShortname": "installer/gnome_flatpaks",
+      "flatpakBootstrapImage": "silverblue",
+      "desktopSuffix": "-gnome",
+      "buildVersion": "${BAZZITE_CENTOS_VERSION:-10}",
+      "contentVersion": "${BAZZITE_CENTOS_FEDORA_VERSION:-43}",
+      "imageVariantSuffix": "-c10s",
+      "features": [
+        "gnome",
+        "el10-minimal"
+      ]
+    },
+    "rhel": {
+      "baseImageName": "rhel-10",
+      "baseImageFamily": "silverblue",
+      "baseVariantName": "RHEL 10",
+      "sourceImage": "${BAZZITE_RHEL_SOURCE_IMAGE:-rhel-10-main}",
+      "flatpakDirShortname": "installer/gnome_flatpaks",
+      "flatpakBootstrapImage": "silverblue",
+      "desktopSuffix": "-gnome",
+      "buildVersion": "${BAZZITE_RHEL_VERSION:-10}",
+      "contentVersion": "${BAZZITE_RHEL_FEDORA_VERSION:-43}",
+      "imageVariantSuffix": "-r10s",
+      "features": [
+        "gnome",
+        "el10-minimal"
+      ]
+    },
+    "rhel-10": {
+      "baseImageName": "rhel-10",
+      "baseImageFamily": "silverblue",
+      "baseVariantName": "RHEL 10",
+      "sourceImage": "${BAZZITE_RHEL_SOURCE_IMAGE:-rhel-10-main}",
+      "flatpakDirShortname": "installer/gnome_flatpaks",
+      "flatpakBootstrapImage": "silverblue",
+      "desktopSuffix": "-gnome",
+      "buildVersion": "${BAZZITE_RHEL_VERSION:-10}",
+      "contentVersion": "${BAZZITE_RHEL_FEDORA_VERSION:-43}",
+      "imageVariantSuffix": "-r10s",
+      "features": [
+        "gnome",
+        "el10-minimal"
+      ]
+    },
+    "r10s": {
+      "baseImageName": "rhel-10",
+      "baseImageFamily": "silverblue",
+      "baseVariantName": "RHEL 10",
+      "sourceImage": "${BAZZITE_RHEL_SOURCE_IMAGE:-rhel-10-main}",
+      "flatpakDirShortname": "installer/gnome_flatpaks",
+      "flatpakBootstrapImage": "silverblue",
+      "desktopSuffix": "-gnome",
+      "buildVersion": "${BAZZITE_RHEL_VERSION:-10}",
+      "contentVersion": "${BAZZITE_RHEL_FEDORA_VERSION:-43}",
+      "imageVariantSuffix": "-r10s",
+      "features": [
+        "gnome",
+        "el10-minimal"
+      ]
+    }
+  },
+  "targets": {
+    "bazzite": {
+      "containerTarget": "bazzite",
+      "features": [
+        "common",
+        "gaming"
+      ]
+    },
+    "bazzite-custom": {
+      "containerTarget": "bazzite",
+      "features": [
+        "common",
+        "gaming",
+        "custom"
+      ]
+    },
+    "bazzite-deck": {
+      "containerTarget": "bazzite-deck",
+      "features": [
+        "common",
+        "gaming",
+        "deck"
+      ]
+    },
+    "bazzite-nvidia": {
+      "containerTarget": "bazzite-nvidia",
+      "features": [
+        "common",
+        "gaming",
+        "nvidia"
+      ]
+    },
+    "bazzite-kmoddev": {
+      "containerTarget": "bazzite",
+      "features": [
+        "common",
+        "kmod-dev"
+      ]
+    }
+  }
+}

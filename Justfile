@@ -25,6 +25,10 @@ just-check:
     done
     just --unstable --fmt --check -f ${project_root}/Justfile
 
+# Validate variant metadata
+variant-metadata-check:
+    @{{ project_root }}/just_scripts/validate-variant-metadata.sh
+
 # Fix Just Syntax
 [private]
 just-fix:
