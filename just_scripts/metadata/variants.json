@@ -193,6 +193,13 @@
         "gaming",
         "nvidia"
       ]
+    },
+    "bazzite-kmoddev": {
+      "containerTarget": "bazzite",
+      "features": [
+        "common",
+        "kmod-dev"
+      ]
     }
   }
 }

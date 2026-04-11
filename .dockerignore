@@ -1,0 +1,6 @@
+just_scripts/output/*.iso
+just_scripts/output/*.log
+press_kit/
+announcements/
+tests/dgoss/
+.git/

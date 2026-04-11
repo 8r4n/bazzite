@@ -66,7 +66,7 @@ rhel_install_source_kind=""
 rhel_install_source_id=""
 rhel_install_source_sha256=""
 
-if [[ ${target} == "bazzite-custom" ]]; then
+if [[ ${target} == "bazzite-custom" || ${target} == "bazzite-kmoddev" ]]; then
     container_target="bazzite"
 fi
 

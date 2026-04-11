@@ -175,6 +175,22 @@ RUN --mount=type=cache,dst=/var/cache \
             fi && \
             rm -f /etc/yum.repos.d/redhat.repo \
         ; fi && \
+        if [[ "${VARIANT_FEATURES}" == *"kmod-dev"* ]]; then \
+            kmoddev_repos=("--enablerepo=${repo_prefix}-baseos" "--enablerepo=${repo_prefix}-appstream") && \
+            [[ -d "${install_root}/CRB/repodata" ]] && kmoddev_repos+=("--enablerepo=${repo_prefix}-crb") || true && \
+            "${package_manager}" -y --disablerepo='*' "${kmoddev_repos[@]}" install \
+                kernel-devel \
+                kernel-devel-matched \
+                kernel-headers \
+                gcc \
+                make \
+                binutils \
+                elfutils-libelf-devel \
+                openssl-devel \
+                kmod \
+                rpm-build \
+                perl \
+        ; fi && \
         rm -f /etc/yum.repos.d/${repo_prefix}-install-root.repo && \
         "${package_manager}" clean all \
     ; fi

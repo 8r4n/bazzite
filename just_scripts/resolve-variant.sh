@@ -239,7 +239,7 @@ build_version=$(resolve_env_template "${build_version_template}")
 content_version=$(resolve_env_template "${content_version_template}")
 source_image=$(resolve_env_template "${source_image_template}")
 
-if [[ ( ${base_image_name} == "centos-stream-10" || ${base_image_name} == "rhel-10" ) && ${target} != "bazzite" && ${target} != "bazzite-custom" ]]; then
+if [[ ( ${base_image_name} == "centos-stream-10" || ${base_image_name} == "rhel-10" ) && ${target} != "bazzite" && ${target} != "bazzite-custom" && ${target} != "bazzite-kmoddev" ]]; then
     echo "${base_variant_name} builds only support desktop targets." >&2
     exit 1
 fi

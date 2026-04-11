@@ -23,6 +23,9 @@
     },
     "el10-minimal": {
       "description": "Reduced feature set used by CentOS Stream 10 and RHEL 10 desktop builds."
+    },
+    "kmod-dev": {
+      "description": "Kernel module development tools (kernel-devel, dkms, gcc, make, etc.)."
     }
   }
 }
