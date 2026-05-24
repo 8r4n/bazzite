@@ -70,6 +70,13 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install QEMU for ISO boot validation
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 xorriso
+
       - name: Set Image Tag
         id: generate-tag
         shell: bash
@@ -143,6 +150,15 @@ jobs:
           image-ref: localhost/payload:latest
           # TODO (@Zeglius): Remove "liveiso" prefix once this becomes the main ISO
           iso-dest: ${{ matrix.image_name }}-${{ steps.generate-tag.outputs.tag }}-live-amd64.iso
+
+      - name: Boot ISO in QEMU (smoke test)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          bash just_scripts/validate-iso-boot.sh \
+            --iso "${{ steps.build.outputs.iso-dest }}" \
+            --mode live \
+            --label "Bazzite-Live"
 
       - name: Move ISOs to Upload Directory
         id: upload-directory

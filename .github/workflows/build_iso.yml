@@ -151,6 +151,13 @@ jobs:
           additional_templates: '/github/workspace/installer/lorax_templates/remove_root_password_prompt.tmpl /github/workspace/installer/lorax_templates/set_default_user.tmpl'
           repos: '/github/workspace/bazzite.repo /etc/yum.repos.d/fedora.repo /etc/yum.repos.d/fedora-updates.repo'
 
+      - name: Install QEMU for ISO boot validation
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 xorriso
+
       - name: Move ISOs to Upload Directory
         id: upload-directory
         shell: bash
@@ -160,6 +167,13 @@ jobs:
           mv ${{ steps.build.outputs.iso_path }}/${{ steps.build.outputs.iso_name }} ${ISO_UPLOAD_DIR}
           mv ${{ steps.build.outputs.iso_path }}/${{ steps.build.outputs.iso_name }}-CHECKSUM ${ISO_UPLOAD_DIR}
           echo "iso-upload-dir=${ISO_UPLOAD_DIR}" >> $GITHUB_OUTPUT
+
+      - name: Boot ISO in QEMU (smoke test)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          iso_path="${{ steps.upload-directory.outputs.iso-upload-dir }}/${{ steps.build.outputs.iso_name }}"
+          bash just_scripts/validate-iso-boot.sh --iso "${iso_path}" --mode anaconda
 
       - name: Upload ISOs and Checksum to Job Artifacts
         if: github.ref_name == 'testing'

@@ -46,6 +46,11 @@ Use the workflow at `.github/workflows/validate_iso_boot.yml`:
    - `mode`: `anaconda` for installer ISOs, `live` for live ISOs, or `auto` if unsure.
    - `label` (optional): volume label override if autodetection fails.
 
+The repository ISO build workflows also run this smoke test automatically:
+
+- `.github/workflows/build_iso.yml` validates installer-style ISOs (`--mode anaconda`).
+- `.github/workflows/build_iso_titanoboa.yml` validates live ISOs (`--mode live`).
+
 ## Manual Validation (Human Sanity Check)
 
 Boot the ISO in a VM (GNOME Boxes / virt-manager / QEMU) and confirm:
@@ -62,4 +67,3 @@ systemctl is-system-running || systemctl --failed
 ```
 
 Expected: `ID=rocky` and `VERSION_ID="9"` in `/etc/os-release`.
-
