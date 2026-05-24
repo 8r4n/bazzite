@@ -120,7 +120,7 @@ detect_volume_label() {
     local label
     label="$(
         xorriso -indev "${iso_path}" -pvd_info 2>/dev/null \
-            | awk -F: '/Volume id/ { sub(/^[[:space:]]+/, "", $2); print $2; exit }'
+            | awk -F: 'tolower($1) ~ /volume id/ { sub(/^[[:space:]]+/, "", $2); print $2; exit }'
     )"
     label="$(trim "${label}")"
     if [[ -z "${label}" ]]; then
