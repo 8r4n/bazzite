@@ -2,10 +2,30 @@ name: Build ISOs
 
 on:
   workflow_dispatch:
+    inputs:
+      image_name:
+        description: "Optional: build only a single image (e.g. bazzite, bazzite-gnome, bazzite-deck)."
+        required: false
+        type: string
+      major_version:
+        description: "Optional: Fedora major version (e.g. 43)."
+        required: false
+        default: "43"
+        type: string
   workflow_call:
+    inputs:
+      image_name:
+        required: false
+        type: string
+      major_version:
+        required: false
+        type: string
 
 env:
   IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+  DEFAULT_ISO_IMAGE_NAMES_JSON: >-
+    ["bazzite","bazzite-nvidia","bazzite-nvidia-open","bazzite-gnome","bazzite-gnome-nvidia","bazzite-gnome-nvidia-open","bazzite-deck","bazzite-deck-gnome","bazzite-ally","bazzite-ally-gnome","bazzite-asus","bazzite-gnome-asus","bazzite-asus-nvidia","bazzite-gnome-asus-nvidia","bazzite-asus-nvidia-open","bazzite-gnome-asus-nvidia-open","bazzite-surface","bazzite-gnome-surface","bazzite-surface-nvidia-open","bazzite-gnome-surface-nvidia-open","bazzite-deck-nvidia","bazzite-deck-nvidia-gnome"]
+  DEFAULT_ISO_MAJOR_VERSIONS_JSON: '["43"]'
 
 permissions: {}
 
@@ -23,30 +43,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image_name:
-          - bazzite
-          - bazzite-nvidia
-          - bazzite-nvidia-open
-          - bazzite-gnome
-          - bazzite-gnome-nvidia
-          - bazzite-gnome-nvidia-open
-          - bazzite-deck
-          - bazzite-deck-gnome
-          - bazzite-ally
-          - bazzite-ally-gnome
-          - bazzite-asus
-          - bazzite-gnome-asus
-          - bazzite-asus-nvidia
-          - bazzite-gnome-asus-nvidia
-          - bazzite-asus-nvidia-open
-          - bazzite-gnome-asus-nvidia-open
-          - bazzite-surface
-          - bazzite-gnome-surface
-          - bazzite-surface-nvidia-open
-          - bazzite-gnome-surface-nvidia-open
-          - bazzite-deck-nvidia
-          - bazzite-deck-nvidia-gnome
-        major_version: [43]
+        image_name: ${{ fromJson(inputs.image_name != '' && format('[{0}]', toJSON(inputs.image_name)) || env.DEFAULT_ISO_IMAGE_NAMES_JSON) }}
+        major_version: ${{ fromJson(inputs.major_version != '' && format('[{0}]', toJSON(inputs.major_version)) || env.DEFAULT_ISO_MAJOR_VERSIONS_JSON) }}
     steps:
 
       - name: Free Disk Space (Ubuntu)
@@ -151,6 +149,13 @@ jobs:
           additional_templates: '/github/workspace/installer/lorax_templates/remove_root_password_prompt.tmpl /github/workspace/installer/lorax_templates/set_default_user.tmpl'
           repos: '/github/workspace/bazzite.repo /etc/yum.repos.d/fedora.repo /etc/yum.repos.d/fedora-updates.repo'
 
+      - name: Install QEMU for ISO boot validation
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 xorriso
+
       - name: Move ISOs to Upload Directory
         id: upload-directory
         shell: bash
@@ -161,15 +166,22 @@ jobs:
           mv ${{ steps.build.outputs.iso_path }}/${{ steps.build.outputs.iso_name }}-CHECKSUM ${ISO_UPLOAD_DIR}
           echo "iso-upload-dir=${ISO_UPLOAD_DIR}" >> $GITHUB_OUTPUT
 
+      - name: Boot ISO in QEMU (smoke test)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          iso_path="${{ steps.upload-directory.outputs.iso-upload-dir }}/${{ steps.build.outputs.iso_name }}"
+          bash just_scripts/validate-iso-boot.sh --iso "${iso_path}" --mode anaconda
+
       - name: Upload ISOs and Checksum to Job Artifacts
-        if: github.ref_name == 'testing'
+        if: github.ref_name == 'testing' || github.event_name == 'workflow_dispatch'
         #if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           name: ${{ matrix.image_name }}-${{ steps.generate-tag.outputs.tag }}-${{ matrix.major_version}}
           path: ${{ steps.upload-directory.outputs.iso-upload-dir }}
           if-no-files-found: error
-          retention-days: 0
+          retention-days: 7
           compression-level: 0
           overwrite: true
 

@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Validate ISO Boot
+
+on:
+  workflow_dispatch:
+    inputs:
+      iso_url:
+        description: "Direct URL to an ISO file to validate (artifact download URL, release asset URL, etc)."
+        required: true
+        type: string
+      mode:
+        description: "Boot mode to validate."
+        required: false
+        default: auto
+        type: choice
+        options:
+          - auto
+          - anaconda
+          - live
+      label:
+        description: "Override ISO volume label (optional)."
+        required: false
+        type: string
+      timeout_seconds:
+        description: "Max seconds to wait for boot."
+        required: false
+        default: "900"
+        type: string
+
+permissions: {}
+
+jobs:
+  boot-smoke-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          submodules: recursive
+
+      - name: Install QEMU and ISO tools
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 xorriso
+
+      - name: Download ISO
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p /tmp/iso-boot
+          curl -L --retry 3 --fail -o /tmp/iso-boot/target.iso "${{ inputs.iso_url }}"
+          ls -lh /tmp/iso-boot/target.iso
+
+      - name: Boot ISO in QEMU (smoke test)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          args=(--iso /tmp/iso-boot/target.iso --mode "${{ inputs.mode }}" --timeout "${{ inputs.timeout_seconds }}")
+          if [[ -n "${{ inputs.label }}" ]]; then
+            args+=(--label "${{ inputs.label }}")
+          fi
+          bash just_scripts/validate-iso-boot.sh "${args[@]}"
+
