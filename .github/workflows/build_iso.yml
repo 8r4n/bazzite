@@ -2,10 +2,30 @@ name: Build ISOs
 
 on:
   workflow_dispatch:
+    inputs:
+      image_name:
+        description: "Optional: build only a single image (e.g. bazzite, bazzite-gnome, bazzite-deck)."
+        required: false
+        type: string
+      major_version:
+        description: "Optional: Fedora major version (e.g. 43)."
+        required: false
+        default: "43"
+        type: string
   workflow_call:
+    inputs:
+      image_name:
+        required: false
+        type: string
+      major_version:
+        required: false
+        type: string
 
 env:
   IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+  DEFAULT_ISO_IMAGE_NAMES_JSON: >-
+    ["bazzite","bazzite-nvidia","bazzite-nvidia-open","bazzite-gnome","bazzite-gnome-nvidia","bazzite-gnome-nvidia-open","bazzite-deck","bazzite-deck-gnome","bazzite-ally","bazzite-ally-gnome","bazzite-asus","bazzite-gnome-asus","bazzite-asus-nvidia","bazzite-gnome-asus-nvidia","bazzite-asus-nvidia-open","bazzite-gnome-asus-nvidia-open","bazzite-surface","bazzite-gnome-surface","bazzite-surface-nvidia-open","bazzite-gnome-surface-nvidia-open","bazzite-deck-nvidia","bazzite-deck-nvidia-gnome"]
+  DEFAULT_ISO_MAJOR_VERSIONS_JSON: "[43]"
 
 permissions: {}
 
@@ -23,30 +43,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image_name:
-          - bazzite
-          - bazzite-nvidia
-          - bazzite-nvidia-open
-          - bazzite-gnome
-          - bazzite-gnome-nvidia
-          - bazzite-gnome-nvidia-open
-          - bazzite-deck
-          - bazzite-deck-gnome
-          - bazzite-ally
-          - bazzite-ally-gnome
-          - bazzite-asus
-          - bazzite-gnome-asus
-          - bazzite-asus-nvidia
-          - bazzite-gnome-asus-nvidia
-          - bazzite-asus-nvidia-open
-          - bazzite-gnome-asus-nvidia-open
-          - bazzite-surface
-          - bazzite-gnome-surface
-          - bazzite-surface-nvidia-open
-          - bazzite-gnome-surface-nvidia-open
-          - bazzite-deck-nvidia
-          - bazzite-deck-nvidia-gnome
-        major_version: [43]
+        image_name: ${{ fromJson(inputs.image_name != '' && format('["{0}"]', inputs.image_name) || env.DEFAULT_ISO_IMAGE_NAMES_JSON) }}
+        major_version: ${{ fromJson(inputs.major_version != '' && format('[{0}]', inputs.major_version) || env.DEFAULT_ISO_MAJOR_VERSIONS_JSON) }}
     steps:
 
       - name: Free Disk Space (Ubuntu)

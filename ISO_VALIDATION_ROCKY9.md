@@ -51,6 +51,15 @@ The repository ISO build workflows also run this smoke test automatically:
 - `.github/workflows/build_iso.yml` validates installer-style ISOs (`--mode anaconda`).
 - `.github/workflows/build_iso_titanoboa.yml` validates live ISOs (`--mode live`).
 
+#### Smaller CI Run (Single ISO)
+
+If you only want a single ISO (instead of the full matrix), run `Actions -> Build ISOs` with:
+
+- `image_name`: set to one image, e.g. `bazzite` or `bazzite-gnome`
+- `major_version`: usually `43`
+
+This produces and uploads just that one ISO artifact and runs the same QEMU boot smoke test on it.
+
 ## Manual Validation (Human Sanity Check)
 
 Boot the ISO in a VM (GNOME Boxes / virt-manager / QEMU) and confirm:
