@@ -176,14 +176,14 @@ jobs:
           bash just_scripts/validate-iso-boot.sh --iso "${iso_path}" --mode anaconda
 
       - name: Upload ISOs and Checksum to Job Artifacts
-        if: github.ref_name == 'testing'
+        if: github.ref_name == 'testing' || github.event_name == 'workflow_dispatch'
         #if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           name: ${{ matrix.image_name }}-${{ steps.generate-tag.outputs.tag }}-${{ matrix.major_version}}
           path: ${{ steps.upload-directory.outputs.iso-upload-dir }}
           if-no-files-found: error
-          retention-days: 0
+          retention-days: 7
           compression-level: 0
           overwrite: true
 
