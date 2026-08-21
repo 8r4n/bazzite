@@ -410,7 +410,7 @@ RUN --mount=type=cache,dst=/var/cache \
         true \
     ; else \
         dnf5 -y install \
-            $(/ctx/ghcurl https://api.github.com/repos/ublue-os/cicpoffs/releases/latest | jq -r '.assets[] | select(.name| test(".*rpm$")).browser_download_url') && \
+            $(/ctx/ghcurl https://api.github.com/repos/ublue-os/cicpoffs/releases/latest | jq -r ".assets[] | select(.name | test(\"fc${FEDORA_VERSION}[.]rpm$\")).browser_download_url") && \
         dnf5 -y copr enable bieszczaders/kernel-cachyos-addons && \
         dnf5 -y install \
             scx-scheds \
