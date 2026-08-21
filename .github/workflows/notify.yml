@@ -1,0 +1,26 @@
+name: Phone Notify
+run-name: "${{ github.event.head_commit.message }}"
+
+# Delivers a push notification to the GitHub mobile app.
+#
+# GitHub's default notification settings only push FAILED workflow runs to
+# the phone, so this job fails on purpose: the run name (taken from the
+# commit message that touched .notify/) becomes the notification text.
+# Triggered by pushing any change under .notify/.
+
+on:
+  push:
+    branches: [main, testing]
+    paths: [".notify/**"]
+
+permissions: {}
+
+jobs:
+  ring:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deliver via failure notification
+        run: |
+          echo "${{ github.event.head_commit.message }}"
+          echo "This run fails intentionally so GitHub pushes it to the mobile app."
+          exit 1

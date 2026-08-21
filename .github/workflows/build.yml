@@ -16,6 +16,7 @@ on:
       - "press_kit/**"
       - "docs/**"
       - ".github/workflows/build_iso*.yml"
+      - ".notify/**"
   push:
     branches:
       - testing
@@ -28,6 +29,7 @@ on:
       - "post_install_files/**"
       - "press_kit/**"
       - ".github/workflows/build_iso*.yml"
+      - ".notify/**"
   merge_group:
   workflow_dispatch:
     inputs:
