@@ -267,6 +267,7 @@ jobs:
         run: |
           cat <<'EOF' >>build_args.txt
           BASE_IMAGE_NAME=${{ steps.base.outputs.base_image_name }}
+          BASE_IMAGE_FAMILY=${{ steps.base.outputs.base_image_name }}
           FEDORA_VERSION=${{ matrix.fedora_version }}
           BASE_IMAGE=${{ steps.base.outputs.base_image }}
           IMAGE_NAME=${{ matrix.image }}
