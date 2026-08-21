@@ -62,6 +62,7 @@ jobs:
         image:
           - bazzite
           - bazzite-custom
+          - bazzite-crimsongold
           - bazzite-gnome
           - bazzite-custom-gnome
           - bazzite-deck
@@ -114,7 +115,7 @@ jobs:
           #
           # Define Container Target
           #
-          if [[ "$IMAGE" == *"custom"* ]]; then
+          if [[ "$IMAGE" == *"custom"* || "$IMAGE" == *"crimsongold"* ]]; then
             echo "container_target=bazzite" >> "$GITHUB_OUTPUT"
             echo "nvidia_base=bazzite" >> "$GITHUB_OUTPUT" # retained for shared build args, not used for custom images
             echo "install_nvidia=false" >> "$GITHUB_OUTPUT"

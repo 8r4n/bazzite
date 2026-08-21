@@ -178,6 +178,14 @@
         "custom"
       ]
     },
+    "bazzite-crimsongold": {
+      "containerTarget": "bazzite",
+      "features": [
+        "common",
+        "gaming",
+        "crimsongold"
+      ]
+    },
     "bazzite-deck": {
       "containerTarget": "bazzite-deck",
       "features": [

@@ -21,6 +21,9 @@
     "custom": {
       "description": "Extra utilities that are only installed for custom variants."
     },
+    "crimsongold": {
+      "description": "Developer tooling and VM guest agents for the CrimsonGold KDE developer variant."
+    },
     "el10-minimal": {
       "description": "Reduced feature set used by CentOS Stream 10 and RHEL 10 desktop builds."
     },

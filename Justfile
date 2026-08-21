@@ -63,6 +63,10 @@ build-iso-release target="" image="":
 build-iso-git target="" image="":
     @{{ project_root }}/just_scripts/build-iso-installer-main.sh {{ target }} {{ image }}
 
+# Build VM disk image via bootc-image-builder (qcow2 for UTM/QEMU by default; also vmdk, raw, vhd)
+build-vm target="" image="" type="qcow2":
+    @{{ project_root }}/just_scripts/build-vm-image.sh {{ target }} {{ image }} {{ type }}
+
 # Run ISO
 run-iso target="" image="":
     @{{ project_root }}/just_scripts/run-iso.sh {{ target }} {{ image }}

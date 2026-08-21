@@ -506,6 +506,29 @@ RUN --mount=type=cache,dst=/var/cache \
                 zstd \
                 gnupg2; \
         fi && \
+        if [[ "${IMAGE_NAME}" == bazzite-crimsongold* || "${VARIANT_FEATURES}" == *"crimsongold"* ]]; then \
+            dnf5 -y install \
+                tmux \
+                zstd \
+                gnupg2 \
+                gcc \
+                gcc-c++ \
+                make \
+                cmake \
+                gdb \
+                strace \
+                ShellCheck \
+                git-lfs \
+                neovim \
+                ripgrep \
+                fd-find \
+                podman-compose \
+                python3-pip \
+                python3-devel \
+                qemu-guest-agent \
+                spice-vdagent \
+                spice-webdavd; \
+        fi && \
         systemctl mask iscsi && \
         systemctl mask wpa_supplicant.service && \
         systemctl disable iwd.service && \

@@ -1,0 +1,13 @@
+# bootc-image-builder configuration used by `just build-vm`.
+# Creates a default login for VM disk images, since Anaconda user
+# creation never runs for a pre-built disk. Change the password
+# after first boot (or edit this file before building).
+
+[[customizations.user]]
+name = "crimson"
+password = "crimsongold"
+groups = ["wheel"]
+
+[[customizations.filesystem]]
+mountpoint = "/"
+minsize = "40 GiB"

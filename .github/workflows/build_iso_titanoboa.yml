@@ -30,6 +30,7 @@ jobs:
       matrix:
         image_name:
           - bazzite
+          - bazzite-crimsongold
           - bazzite-nvidia
           - bazzite-nvidia-open
           - bazzite-gnome

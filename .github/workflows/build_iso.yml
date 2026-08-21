@@ -24,7 +24,7 @@ on:
 env:
   IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
   DEFAULT_ISO_IMAGE_NAMES_JSON: >-
-    ["bazzite","bazzite-nvidia","bazzite-nvidia-open","bazzite-gnome","bazzite-gnome-nvidia","bazzite-gnome-nvidia-open","bazzite-deck","bazzite-deck-gnome","bazzite-ally","bazzite-ally-gnome","bazzite-asus","bazzite-gnome-asus","bazzite-asus-nvidia","bazzite-gnome-asus-nvidia","bazzite-asus-nvidia-open","bazzite-gnome-asus-nvidia-open","bazzite-surface","bazzite-gnome-surface","bazzite-surface-nvidia-open","bazzite-gnome-surface-nvidia-open","bazzite-deck-nvidia","bazzite-deck-nvidia-gnome"]
+    ["bazzite","bazzite-crimsongold","bazzite-nvidia","bazzite-nvidia-open","bazzite-gnome","bazzite-gnome-nvidia","bazzite-gnome-nvidia-open","bazzite-deck","bazzite-deck-gnome","bazzite-ally","bazzite-ally-gnome","bazzite-asus","bazzite-gnome-asus","bazzite-asus-nvidia","bazzite-gnome-asus-nvidia","bazzite-asus-nvidia-open","bazzite-gnome-asus-nvidia-open","bazzite-surface","bazzite-gnome-surface","bazzite-surface-nvidia-open","bazzite-gnome-surface-nvidia-open","bazzite-deck-nvidia","bazzite-deck-nvidia-gnome"]
   DEFAULT_ISO_MAJOR_VERSIONS_JSON: '["43"]'
 
 permissions: {}
